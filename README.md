@@ -96,9 +96,9 @@ destroy(my_entity);
 
 All functions above gets world from context, so if you need to call them from outside - pass world before entity:
 ```odin
-my_entity := new_entity(world, Component1.{}, Component2);
-set(world, my_entity, Component2.{"new_value"});
-erase(world, my_entity, Component2);
+my_entity := new_entity(world, .[Component1.{}, Component2]);
+set(world, my_entity, .[Component2.{"new_value"}]);
+erase(world, my_entity, .[Component2]);
 dump(world, my_entity);
 destroy(world, my_entity);
 ```
