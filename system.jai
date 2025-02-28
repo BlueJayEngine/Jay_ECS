@@ -57,7 +57,6 @@ handle_system :: (system_type: Type, index: s64, component_registry: []Type, bui
 // TODO: system arguments rework to support scalars and harmonize passing by pointer and by value
 
 collect_arg_types :: (proc_type: *Type_Info, result: *[..]Type, caller := #caller_location) {
-    has_entity := false;
     for arg: (cast(*Type_Info_Procedure)proc_type).argument_types {
         if arg.type == {
             case .POINTER; {
@@ -71,7 +70,6 @@ collect_arg_types :: (proc_type: *Type_Info, result: *[..]Type, caller := #calle
                 array_add_if_unique(result, (cast(*Type)*arg).*);
             }
 
-            case .FLOAT; #through;
             case .INTEGER; {
                 continue;
             }
