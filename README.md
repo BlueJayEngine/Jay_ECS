@@ -103,6 +103,21 @@ dump(world, my_entity);
 destroy(world, my_entity);
 ```
 
-
-
 **NOTE:** The expectation was that the `set()` function would be used to mutate entities. If you need to efficiently update the value of a component - get it via a system argument and update it in place.
+
+### TODO: ⌛
+
+ - Queries and Options:
+ ```odin
+ // Options to iterate over entities that may have no component, 
+ // but should pe processed somehow:
+ system_with_option :: (entity: Entity, comp: Option(Component)) {
+ }
+ 
+ // Queries to iterate over other entities that may have components, 
+ // but should pe processed somehow:
+ system_with_option :: (entity: Entity, others: Query(Component, Other_Component)) {
+ }
+ ```
+ - Auto-Parallelization
+ - Advanced system management (ordering, bundling and other) 
