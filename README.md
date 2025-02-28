@@ -13,7 +13,7 @@ A humble attempt to build an ergonomic ECS in Jai (The Language™) for healthy 
 
 #load "systems_example.jai" // begin_play(), hello_tick() and end_play() systems
 
-Game_Stage :: enum_flags {
+Game_Stage :: enum_flags { // simple game stages example
     BEGIN;
     TICK;
     END;
@@ -31,9 +31,7 @@ main :: () {
         System(end_play, xx Game_Stage.END)
     ]);
 
-
     progress(*world, 0, Game_Stage.BEGIN);
-
 
     for 0..100 { // my cool game loop
         progress(*world, 0.5, Game_Stage.TICK); // 0.5 is a lie! Calc delta time by yourself! 
