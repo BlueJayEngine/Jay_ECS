@@ -4,8 +4,8 @@
 #import "Bit_Operations";
 #import "Compiler";
 
-#load "entity.jai";
-#load "world.jai";
-#load "signature.jai";
-#load "archetype.jai";
-#load "system.jai";
+#load "world.jai"; // Everything lives here
+#load "archetype.jai"; // Everything stores here
+#load "signature.jai"; // Everything can be described by a couple digits
+#load "system.jai"; // Everything can do
+#load "entity.jai"; // Everything know it's place

@@ -7,6 +7,8 @@ Entity_Info :: struct {
     wrapped: Entity;
 }
 
+#assert(size_of(Entity) == size_of(Entity_Info));
+
 Entity_State :: struct (reg: [$SIZE] Type) {
     using info: Entity_Info;
 
@@ -22,29 +24,27 @@ Entity_Procs :: struct {
     dump: (entity: Entity);
 }
 
+
+#add_context ent_procs := _default_ent_procs;
 _default_ent_procs :: Entity_Procs.{
     new_entity = (components: ..Any) -> Entity {
-        log_error("Usage of entity procs with no world arg is forbitten outside of system. Use 'new_entity :: (world: $WT/World, components: ..Any) -> Entity' instead");
+        log_error("Usage of entity procedures with no world argument is forbidden outside of system. Use 'new_entity :: (world: World, components: ..Any) -> Entity' instead");
         return -1;
     },
     set = (entity: Entity, components: ..Any) {
-        log_error("Usage of entity procs with no world arg is forbitten outside of system. Use 'set :: (world: $WT/World, entity: Entity, components: ..Any)' instead");
+        log_error("Usage of entity procedures with no world argument is forbidden outside of system. Use 'set :: (world: World, entity: Entity, components: ..Any)' instead");
     },
     erase = (entity: Entity, types: ..Type) {
-        log_error("Usage of entity procs with no world arg is forbitten outside of system. Use 'erase :: (world: $WT/World, entity: Entity, targets: ..Type)' instead");
+        log_error("Usage of entity procedures with no world argument is forbidden outside of system. Use 'erase :: (world: World, entity: Entity, targets: ..Type)' instead");
     },
     destroy = (entity: Entity) {
-        log_error("Usage of entity procs with no world arg is forbitten outside of system. Use 'destroy :: (world: $WT/World, entity: Entity)' instead");
+        log_error("Usage of entity procedures with no world argument is forbidden outside of system. Use 'destroy :: (world: World, entity: Entity)' instead");
     },
     dump = (entity: Entity) {
-        log_error("Usage of entity procs with no world arg is forbitten outside of system. Use 'dump :: (world: $WT/World, entity: Entity)' instead");
+        log_error("Usage of entity procedures with no world argument is forbidden outside of system. Use 'dump :: (world: World, entity: Entity)' instead");
     },
 };
 
-#add_context ent_procs := _default_ent_procs;
-
-
-#assert(size_of(Entity) == size_of(Entity_Info));
 
 wrap :: inline (e_info: Entity_Info) -> Entity {
     return e_info.wrapped;
@@ -54,7 +54,7 @@ unwrap :: inline (entity: Entity) -> Entity_Info {
     return .{wrapped=entity};
 }
 
-is_valid :: (world: $WT/World, entity: Entity) -> bool {
+is_valid :: (world: World, entity: Entity) -> bool {
     e_info := unwrap(entity);
     return e_info.generation == world.entities[e_info.index].generation;
 }
@@ -79,7 +79,7 @@ dump :: inline (entity: Entity) {
     context.ent_procs.dump(entity);
 };
 
-new_entity :: (world: $WT/World, components: []Any) -> Entity {
+new_entity :: inline (world: World, components: []Any) -> Entity {
     
     e_index: s64;
 
@@ -87,7 +87,7 @@ new_entity :: (world: $WT/World, components: []Any) -> Entity {
         e_index = pop(*world.thumbstones);
     } else {
         e_index = world.entities.count;
-        array_add(*world.entities, Entity_State(WT.component_registry).{index=xx e_index});
+        array_add(*world.entities, Entity_State(world.component_registry).{index=xx e_index});
     }
 
     entity_info := *world.entities[e_index];
@@ -95,14 +95,14 @@ new_entity :: (world: $WT/World, components: []Any) -> Entity {
 
     target_signature, values := sign_from_any(world, components);
 
-    arch: *Archetype(WT.component_registry) = find_archetype(world, target_signature);
+    arch: *Archetype(world.component_registry) = find_archetype(world, target_signature);
 
     make_instance(arch, entity_info, values);  
 
     return entity;
 }
 
-set :: (world: $WT/World, entity: Entity, components: []Any) {
+set :: inline (world: World, entity: Entity, components: []Any) {
 
     e_info := unwrap(entity);
     e_state := *world.entities[e_info.index];
@@ -126,8 +126,8 @@ set :: (world: $WT/World, entity: Entity, components: []Any) {
     instance_begin_destroy(from_arch, old_state.arch_index);
 }
 
-erase :: (world: $WT/World, entity: Entity, targets: []Type) { //TODO: change name, erase is not so suitable for component removal
-    mask := sign(WT.component_registry, targets);
+erase :: inline (world: World, entity: Entity, targets: []Type) { //TODO: change name, erase is not so suitable for component removal
+    mask := sign(world.component_registry, targets);
 
     e_info := unwrap(entity);
     e_state := *world.entities[e_info.index];
@@ -149,7 +149,7 @@ erase :: (world: $WT/World, entity: Entity, targets: []Type) { //TODO: change na
     instance_begin_destroy(from_arch, old_state.arch_index);
 }
 
-destroy :: (world: $WT/World, entity: Entity) {
+destroy :: inline (world: World, entity: Entity) {
 
     e_info := unwrap(entity);
     e_state := *world.entities[e_info.index];
@@ -163,7 +163,7 @@ destroy :: (world: $WT/World, entity: Entity) {
     e_state.generation += 1;
 }
 
-dump :: (world: $WT/World, entity: Entity) {
+dump :: inline (world: World, entity: Entity) {
 
     e_info := unwrap(entity);
     e_state := *world.entities[e_info.index];

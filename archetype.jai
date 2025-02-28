@@ -27,7 +27,7 @@ make_archetype :: (in_signature: Signature($RG)) -> Archetype(RG) {
     return arch;
 }
 
-find_archetype :: inline (world: $WT/World, target_signature: Signature(WT.component_registry)) -> *Archetype(WT.component_registry) {
+find_archetype :: inline (world: World, target_signature: Signature(world.component_registry)) -> *Archetype(world.component_registry) {
     for *world_arch: world.archetypes {
         if equal(*world_arch.signature, *target_signature) {
             return world_arch;

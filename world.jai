@@ -1,13 +1,26 @@
 #add_context world_ptr: *void;
 
+
+// The World represents the game state.  
+// It needs to know which systems you'll use.  
+// Systems are just procedures wrapped in a System poly struct (see system.jai).  
+//  
+// Basic example:  
+//  
+//      world: World(systems = .[  
+//          System(tick),   // e.g., tick :: (entity: Entity) { ... }  
+//      ]);  
+//  
+// Systems can't be added/removed at runtime, so they all are conditional.  
+// Also they just run one after another, no analysis or parallelisation.  
+// This part of the ECS is still evolving, so it's a little messy.
+
 World :: struct (systems: [$SYS_COUNT]Type) {
 
-    size :: component_registry.count;
-
-    archetypes: [..] Archetype(component_registry);
     entities: [..] Entity_State(component_registry);
     thumbstones: [..] s64;
 
+    archetypes: [..] Archetype(component_registry);
     dirty_archs: [..] *Archetype(component_registry);
 
     component_registry :: #run -> []Type {
@@ -23,12 +36,12 @@ World :: struct (systems: [$SYS_COUNT]Type) {
             collect_arg_types(proc_type, *result);
         }
 
-        log("%", result);
+        log("World component registry is: %", result);
 
         return result;
     }
 
-    system_signs :: #run -> []Signature(component_registry) {
+    system_signs :: #run -> [SYS_COUNT]Signature(component_registry) {
         result: [SYS_COUNT]Signature(component_registry);
         
         for system_type, index: systems {
@@ -52,8 +65,7 @@ World :: struct (systems: [$SYS_COUNT]Type) {
         return result;
     }
 
-    _progress_impl :: (world: $WT/World, delta_time: float64, condition: u64) {
-        log("% - %", systems[0].run_if, condition);
+    _progress_impl :: (world: World, delta_time: float64, condition: u64) {
         #insert -> string {
             builder: String_Builder;
 
@@ -66,7 +78,11 @@ World :: struct (systems: [$SYS_COUNT]Type) {
     }
 }
 
-progress :: inline (world: $WT/World, delta_time: float64, condition: $CT = 0) #modify {
+// To keep your world spinning you need to call progress function. 
+// I was about to pass Apollo delta-time to it, but changed my mind and passed float64 seconds. Prove me wrong (for real, if you have better idea i want to hear it).
+// The condition is enum_flag value that represent current game condition. I wanted it exposed, so user can define cool custom game stages. As you can see it only accepts enum_flags
+
+progress :: inline (world: *World, delta_time: Delta_Time, condition: $CT = 0) #modify {
     ct_info := cast(*Type_Info)CT;
 
     if ct_info.runtime_size != 8 then return false, "Condition must be 64bit enum flag";
@@ -82,29 +98,32 @@ progress :: inline (world: $WT/World, delta_time: float64, condition: $CT = 0) #
 
     return false, "Condition must be 64bit enum flag";
 } {
+
+    WT :: type_of(world);
     
     procs :: Entity_Procs.{
-        new_entity = inline (components: ..Any) -> Entity {
-            return new_entity(cast(*WT)context.world_ptr, components);
+        new_entity = (components: ..Any) -> Entity {
+            return new_entity(cast(WT)context.world_ptr, components);
         },
-        set = inline (entity: Entity, components: ..Any) {
-            set(cast(*WT)context.world_ptr, entity, components);
+        set = (entity: Entity, components: ..Any) {
+            set(cast(WT)context.world_ptr, entity, components);
         },
-        erase = inline (entity: Entity, types: ..Type) {
-            erase(cast(*WT)context.world_ptr, entity, types);
+        erase = (entity: Entity, types: ..Type) {
+            erase(cast(WT)context.world_ptr, entity, types);
         },
-        destroy = inline (entity: Entity) {
-            destroy(cast(*WT)context.world_ptr, entity);
+        destroy = (entity: Entity) {
+            destroy(cast(WT)context.world_ptr, entity);
         },
-        dump = inline (entity: Entity) {
-            dump(cast(*WT)context.world_ptr, entity);
+        dump = (entity: Entity) {
+            dump(cast(WT)context.world_ptr, entity);
         },
     };
     
-    WT._progress_impl(world, delta_time, xx condition,, ent_procs = procs, world_ptr = *world);
+    WT._progress_impl(world, xx delta_time, xx condition,, ent_procs = procs, world_ptr = world, jay_delta_time = delta_time);
 }
 
-cleanup :: (world: $WT/World) {
+// Cleanup is the function after all systems fired (called from progress function)
+cleanup :: (world: World) {
     for arch: world.dirty_archs {
         while arch.to_destroy.count > 0 {
             instance_destroy(arch, pop(*arch.to_destroy));
@@ -120,7 +139,8 @@ cleanup :: (world: $WT/World) {
     }
 }
 
-dump :: (world: $WT/World) {
+// Print world state into logs
+dump :: (world: World) {
     builder: String_Builder;
 
     init_string_builder(*builder,, temp);
@@ -132,7 +152,8 @@ dump :: (world: $WT/World) {
     log("%", builder_to_string(*builder,, temp));
 }
 
-free :: (world: $WT/World) {
+// clear everything
+free :: (world: World) {
     for arch: world.archetypes {
         arch_free(arch);
     }

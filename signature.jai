@@ -48,9 +48,9 @@ sign :: ($reg: [$N]Type, components: []Type) -> Signature(reg) {
     return result;
 }
 
-sign_from_any :: (world: $WT/World, components: []Any) -> Signature(WT.component_registry), [WT.component_registry.count]*void {
-    result: Signature(WT.component_registry);
-    values: [WT.component_registry.count]*void;
+sign_from_any :: (world: World, components: []Any) -> Signature(world.component_registry), [world.component_registry.count]*void {
+    result: Signature(world.component_registry);
+    values: [world.component_registry.count]*void;
 
     for component: components {
         type: Type;
@@ -67,7 +67,7 @@ sign_from_any :: (world: $WT/World, components: []Any) -> Signature(WT.component
             value = component.value_pointer;
         }
 
-        exists, c_index := array_find(WT.component_registry, type);
+        exists, c_index := array_find(world.component_registry, type);
         if exists {
             result.base[c_index >> 6] |= (1 << (c_index & 63)); 
             values[c_index] = value;
