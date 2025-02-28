@@ -5,7 +5,7 @@
 
 A humble attempt to build an ergonomic ECS in Jai (The Language™) for healthy game development. 
 
-## Minimal example 📦
+## Minimal example: 📦
 
 ```odin
 
@@ -26,7 +26,7 @@ Hello_Info :: struct { // just a silly component
 
 main :: () {
     world: World(systems = .[
-        System(begin_play, xx Game_Stage.BEGIN),
+        System(begin_play, xx Game_Stage.BEGIN),  // yeh, systems should be known at compile time
         System(hello_tick, xx Game_Stage.TICK),
         System(end_play, xx Game_Stage.END)
     ]);
@@ -44,7 +44,7 @@ main :: () {
 
 ```
 
-Systems example:
+### Systems example: ⚙️
 ```odin
 #import "Basic";
 
@@ -61,7 +61,48 @@ hello_tick :: (entity: Entity, hello: Hello_Info) {
     log("Hello Tick: % - %", hello, delta_time());
 }
 
+// Passing components by value and by pointer are same right now, but in the future this will be important
+hello_tick1 :: (entity: Entity, hello: *Hello_Info) {
+    log("Hello Tick: % - %", hello, delta_time());
+}
+
 end_play :: () {
     log("End Play");
 }
 ```
+
+
+### Entity manipulation: 🔬
+```odin
+
+// Create new entity:
+my_entity := new_entity(Component1.{}, Component2); 
+
+// A type cannot be a component, so-any values of type “Type” will be treated as default values of that type ( Component2 and Component2.{} are equal 🤪) 
+
+// Add or replace component:
+set(my_entity, Component2.{"new_value"});
+
+// Remove component from entity:
+erase(my_entity, Component2);
+
+// Print entity to logs:
+dump(my_entity);
+
+// Destroy entire entity:
+destroy(my_entity);
+
+```
+
+All functions above gets world from context, so if you need to call them from outside - pass world before entity:
+```odin
+my_entity := new_entity(world, Component1.{}, Component2);
+set(world, my_entity, Component2.{"new_value"});
+erase(world, my_entity, Component2);
+dump(world, my_entity);
+destroy(world, my_entity);
+```
+
+
+
+**NOTE:** The expectation was that the `set()` function would be used to mutate entities. If you need to efficiently update the value of a component - get it via a system argument and update it in place.
