@@ -114,8 +114,7 @@ destroy(world, my_entity);
  system_with_option :: (entity: Entity, comp: Option(Component)) {
  }
  
- // Queries to iterate over other entities that may have components, 
- // but should pe processed somehow:
+ // Queries to iterate over other entities that have queried components:
  system_with_option :: (entity: Entity, others: Query(Component, Other_Component)) {
  }
  ```
