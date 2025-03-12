@@ -2,7 +2,7 @@ Archetype :: struct (reg: [$SIZE]Type) {
     signature: Signature(reg);
 
     storage: [SIZE] *void;
-    owners: [..]*Entity_State(reg);
+    owners: []Entity;
     
     count: s64;
     max_count: s64;
@@ -39,25 +39,34 @@ find_archetype :: inline (world: World, target_signature: Signature(world.compon
     return *world.archetypes[world.archetypes.count-1];
 }
 
-expand :: (arch: *$AT/Archetype) {
+expand :: (arch: *Archetype) {
 
-    walk_components(arch.signature, #code {
-
-        if arch.storage[c_index] {
+    if arch.max_count > 0 {
+        walk_components(arch.signature, #code {
             arch.storage[c_index] = realloc(
                 arch.storage[c_index], 
-                comp_info.runtime_size * arch.max_count, 
-                comp_info.runtime_size * arch.max_count * 2,, 
+                comp_info.runtime_size * (arch.max_count * 2),
+                comp_info.runtime_size * arch.max_count,, 
                 arch.allocator);
-            arch.max_count *= 2;
-        } else {
-            arch.storage[c_index] = alloc(comp_info.runtime_size * 4,, arch.allocator);
-            arch.max_count = 4;
-        }
-    });
+        });
+
+        arch.owners.data = realloc(
+            arch.owners.data,
+            size_of(Entity) * (arch.max_count * 2),
+            size_of(Entity) * arch.max_count,, arch.allocator);
+
+        arch.max_count *= 2;
+    } else {
+        walk_components(arch.signature, #code {
+            arch.storage[c_index] = alloc(comp_info.runtime_size * 32,, arch.allocator);
+        });
+
+        arch.owners.data = alloc(size_of(Entity) * 32,, arch.allocator);
+        arch.max_count = 32;
+    }
 }
 
-make_instance :: (arch: *$AT/Archetype, e_state: *$EST/World.Entity_State, values: []*void = .[]) {
+make_instance :: (arch: *Archetype, e_state: *$EST/World.Entity_State, values: []*void = .[]) {
     if arch.count>=arch.max_count {
         expand(arch);
     }
@@ -82,7 +91,10 @@ make_instance :: (arch: *$AT/Archetype, e_state: *$EST/World.Entity_State, value
         }
     });
 
-    array_add(*arch.owners, e_state);
+
+    arch.owners.count += 1;
+    arch.owners[arch.count] = e_state.wrapped;
+    // log("%", arch.owners);
 
     e_state.arch = arch;
     e_state.arch_index = arch.count;
@@ -94,10 +106,12 @@ instance_begin_destroy :: (arch: *Archetype, index: s64) {
     array_add(*arch.to_destroy, index);
 }
 
-instance_destroy :: (arch: *$AT/Archetype, index: s64) {
+instance_destroy :: (world: World, arch: *Archetype, index: s64) {
+    owner_info := *world.entities[arch.owners[index]];
 
     arch.owners[index], arch.owners[arch.owners.count-1] = arch.owners[arch.owners.count-1], arch.owners[index];
-    arch.owners[index].arch_index = index;
+
+    owner_info.arch_index = index;
 
     old_owner := pop(*arch.owners);
 
@@ -106,15 +120,17 @@ instance_destroy :: (arch: *$AT/Archetype, index: s64) {
 
     walk_components(arch.signature, #code {
         storage = arch.storage[c_index]; 
-        type = cast(*Type_Info)AT.reg[c_index];
+        type = cast(*Type_Info)arch.reg[c_index];
 
         memcpy(storage + type.runtime_size * index, storage + type.runtime_size * (arch.count-1), type.runtime_size);
     });
+
     arch.count -= 1;
+    log("!!! % !!!", arch.count);
 }
 
 
-instance_get_any :: (arch: *$AT/Archetype, index: s64) -> []Any {
+instance_get_any :: (arch: *Archetype, index: s64) -> []Any {
     if !arch || index < 0 return .[];
     values := NewArray(count_components(arch.signature), Any,, temp);
 
@@ -131,8 +147,8 @@ instance_get_any :: (arch: *$AT/Archetype, index: s64) -> []Any {
     return values;
 }
 
-instance_get :: (arch: *$AT/Archetype, index: s64) -> [AT.SIZE]*void {
-    values: [AT.SIZE]*void;
+instance_get :: (arch: *Archetype, index: s64) -> [arch.SIZE]*void {
+    values: [arch.SIZE]*void;
 
     walk_components(arch.signature, #code {
         values[c_index] = arch.storage[c_index] + (comp_info.runtime_size * index);
@@ -141,7 +157,7 @@ instance_get :: (arch: *$AT/Archetype, index: s64) -> [AT.SIZE]*void {
     return values;
 }
 
-instance_set :: (arch: *$AT/Archetype, index: s64, comp_mask: $ST/Signature, values: [AT.SIZE]*void) {
+instance_set :: (arch: *Archetype, index: s64, comp_mask: Signature(arch.reg), values: [arch.SIZE]*void) {
     walk_components(comp_mask, #code {
         memory : *void = arch.storage[c_index] + comp_info.runtime_size * index;
         memcpy(memory, values[c_index], comp_info.runtime_size);
@@ -149,7 +165,7 @@ instance_set :: (arch: *$AT/Archetype, index: s64, comp_mask: $ST/Signature, val
 }
 
 
-dump :: (arch: *$AT/Archetype, builder: *String_Builder) {
+dump :: (arch: *Archetype, builder: *String_Builder) {
 
     print_to_builder(builder, "    Arch.%:\n", arch.signature);
 

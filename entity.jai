@@ -1,5 +1,7 @@
 Entity :: s64;
 
+ENTITY_NULL :: 0xffffffff;
+
 Entity_Info :: struct {
     index: u32;
     generation: u32;
@@ -29,7 +31,7 @@ Entity_Procs :: struct {
 _default_ent_procs :: Entity_Procs.{
     new_entity = (components: ..Any) -> Entity {
         log_error("Usage of entity procedures with no world argument is forbidden outside of system. Use 'new_entity :: (world: World, components: ..Any) -> Entity' instead");
-        return -1;
+        return ENTITY_NULL;
     },
     set = (entity: Entity, components: ..Any) {
         log_error("Usage of entity procedures with no world argument is forbidden outside of system. Use 'set :: (world: World, entity: Entity, components: ..Any)' instead");
@@ -150,7 +152,6 @@ erase :: inline (world: World, entity: Entity, targets: []Type) { //TODO: change
 }
 
 destroy :: inline (world: World, entity: Entity) {
-
     e_info := unwrap(entity);
     e_state := *world.entities[e_info.index];
 

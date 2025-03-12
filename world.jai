@@ -122,22 +122,17 @@ progress :: inline (world: *World, delta_time: Delta_Time, condition: $CT = 0) #
     WT._progress_impl(world, xx delta_time, xx condition,, ent_procs = procs, world_ptr = world, jay_delta_time = delta_time);
 }
 
-// Cleanup is the function after all systems fired (called from progress function)
-cleanup :: (world: World) {
-    for arch: world.dirty_archs {
-        while arch.to_destroy.count > 0 {
-            instance_destroy(arch, pop(*arch.to_destroy));
-            if arch.count <= 0 {
-                arch_free(arch);
-                for world.archetypes {
-                    if it == arch.* then remove it;
-                }
+cleanup :: inline (world: *World, arch: *Archetype) {
+    while arch.to_destroy.count > 0 {
+        instance_destroy(world, arch, pop(*arch.to_destroy));
+        if arch.count <= 0 {
+            arch_free(arch);
+            for world.archetypes {
+                if it == arch.* then remove it;
             }
         }
-
-        remove arch;
     }
-}
+} 
 
 // Print world state into logs
 dump :: (world: World) {

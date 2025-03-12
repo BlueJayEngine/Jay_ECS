@@ -35,7 +35,7 @@ handle_system :: (system_type: Type, index: s64, component_registry: []Type, bui
             array_add(*cast_strings, casting);
         }
         print_to_builder(builder, "    sign :: #run sign_system(component_registry, systems[%].PT);\n", index);
-        print_to_builder(builder, "    for arch: world.archetypes {\n");
+        print_to_builder(builder, "    for *arch: world.archetypes {\n");
         print_to_builder(builder, "        if match(arch.signature, sign) {\n");
         print_to_builder(builder, "%\n", join(..cast_strings, ""));
         print_to_builder(builder, "            for owner, inst_index: arch.owners {\n");
@@ -44,7 +44,7 @@ handle_system :: (system_type: Type, index: s64, component_registry: []Type, bui
 
         print_to_builder(builder, "            }\n");
         print_to_builder(builder, "        }\n");
-        print_to_builder(builder, "        cleanup(world);\n");
+        print_to_builder(builder, "        cleanup(*world, arch);\n");
         print_to_builder(builder, "    }\n");
     } else {
         print_to_builder(builder, "    sys_proc();\n");
@@ -98,7 +98,7 @@ get_arg_template :: (arg_type: Type, reg: []Type) -> string, string {
 
     if arg_type == {
         case Entity; {
-            return tprint("owner.wrapped"), "";
+            return tprint("owner"), "";
         }
 
         case Delta_Time; {

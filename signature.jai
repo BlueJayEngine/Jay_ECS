@@ -2,29 +2,29 @@ Signature :: struct (reg: [$SIZE]Type) {
     #as base: [(SIZE + 63) >> 6]s64;
 }
 
-match :: (a: $ST/Signature, b: ST) -> bool {
+match :: (a: Signature, b: Signature) -> bool {
     return #insert -> string {
         comparsions: [..]string;
-        for index: 0..ST.base.count-1 {
+        for index: 0..a.base.count-1 {
             array_add(*comparsions, sprint("a.base[%] & b.base[%] == b.base[%]", index, index, index));
         }
         return join(join(..comparsions, " && "), ";");
     };
 }
 
-equal :: inline (a: *$ST/Signature, b: *ST) -> bool {
-    return !memcmp(a, b, size_of(ST));
+equal :: inline (a: *Signature, b: *Signature) -> bool {
+    return !memcmp(a, b, size_of(type_of(a)));
 }
 
-walk_components :: (in_signature: $ST/Signature, code: Code) #expand {
-    for p_index: 0..ST.base.count-1 {
+walk_components :: (in_signature: Signature, code: Code) #expand {
+    for p_index: 0..in_signature.base.count-1 {
         part := in_signature.base[p_index];
         `c_index: s64 = ---;
         while true {
             c_index = bit_scan_forward(part) - 1;
             if c_index >= 0 {
                 part &= ~(1<<(c_index));
-                `comp_type := ST.reg[c_index];
+                `comp_type := in_signature.reg[c_index];
                 `comp_info := cast(*Type_Info)comp_type;
                 #insert code;
             } else break;

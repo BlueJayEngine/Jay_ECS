@@ -9,3 +9,4 @@
 #load "signature.jai"; // Everything can be described by a couple digits
 #load "system.jai"; // Everything can do
 #load "entity.jai"; // Everything know it's place
+#load "query.jai"; // Everything can be found
