@@ -120,6 +120,41 @@ operator [] :: inline (iter: Iterator, index: s64) -> *iter.T {
     return *iter._values[q_index][a_index];
 }
 
+for_expansion :: (query: *Query, body: Code, flags: For_Flags) #expand {
+    
+    #insert -> string {
+        builder: String_Builder;
+
+        print_to_builder(*builder, "`components :: inline () -> (");
+
+        returns: [..]string;
+        items: [..]string;
+        
+
+        for comp_type, index: query.components {
+            array_add(*items, sprint("*query._iter_%._values[`__jay_a_index][`__jay_b_index]", index));
+            array_add(*returns, sprint("*query.components[%]", index));
+        }
+
+        print_to_builder(*builder, join(..returns, separator = ", "));
+
+        print_to_builder(*builder, ") #expand { return ");
+
+        print_to_builder(*builder, join(..items, separator = ", "));
+
+        print_to_builder(*builder, ";}");
+
+        return builder_to_string(*builder);
+    }
+    
+    for `__jay_a_index: 0..query.entities.count-1 {
+        for `it, `__jay_b_index: query.entities[__jay_a_index] {
+            `it_index := query._offsets[__jay_a_index]+__jay_b_index;
+            #insert (remove={destroy(query.entities[__jay_a_index][__jay_b_index]);}, break=break __jay_a_index) body;
+        }
+    }
+}
+
 #scope_file
 
 query_index :: (offsets: []s64, in: s64) -> s64 {

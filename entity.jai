@@ -1,4 +1,4 @@
-Entity :: s64;
+Entity :: #type,distinct s64;
 
 ENTITY_NULL :: 0xffffffff;
 

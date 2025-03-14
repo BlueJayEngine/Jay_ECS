@@ -33,7 +33,7 @@ World :: struct (systems: [$SYS_COUNT]Type) {
 
             proc_type := params[1].type;
 
-            collect_arg_types(proc_type, *result);
+            collect_arg_types(proc_type, *result, .PRS_QUERIES);
         }
 
         log("World component registry is: %", result);
