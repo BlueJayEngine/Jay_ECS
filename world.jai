@@ -1,4 +1,5 @@
 #add_context world_ptr: *void;
+#add_context compo: []Type;
 
 
 // The World represents the game state.  

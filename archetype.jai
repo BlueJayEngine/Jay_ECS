@@ -45,17 +45,17 @@ expand :: (arch: *Archetype) {
         walk_components(arch.signature, #code {
             arch.storage[c_index] = realloc(
                 arch.storage[c_index], 
-                comp_info.runtime_size * (arch.max_count * 2),
+                comp_info.runtime_size * (arch.max_count + 32),
                 comp_info.runtime_size * arch.max_count,, 
                 arch.allocator);
         });
 
         arch.owners.data = realloc(
             arch.owners.data,
-            size_of(Entity) * (arch.max_count * 2),
+            size_of(Entity) * (arch.max_count + 32),
             size_of(Entity) * arch.max_count,, arch.allocator);
 
-        arch.max_count *= 2;
+        arch.max_count += 32;
     } else {
         walk_components(arch.signature, #code {
             arch.storage[c_index] = alloc(comp_info.runtime_size * 32,, arch.allocator);

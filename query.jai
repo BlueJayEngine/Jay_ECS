@@ -1,4 +1,4 @@
-Query :: struct (components: ..Type, exclude: []Type = none) {  
+Query :: struct (components: ..Type) {  
     entities: [][]Entity;
     _offsets: []s64;
 
@@ -28,9 +28,12 @@ init :: (world: World, query: *Query) {
     valid_archs: [..]*Archetype(world.component_registry);
     defer array_free(valid_archs);
 
+    query.count = 0;
+
     for *arch: world.archetypes {
         if match(arch.signature, q_sign) {
             array_add(*valid_archs, arch);
+            query.count += arch.count;
         }
     }
 
@@ -76,15 +79,13 @@ init :: (world: World, query: *Query) {
 
         return builder_to_string(*builder);
     }
-
-    query.count = next_offset;
 }
 
-get :: (query: Query, $T: Type) -> Iterator(T) {
+get_iter :: (query: Query, $component: Type) -> Iterator(component) {
     #insert -> string {
         builder: String_Builder;
 
-        success, index := array_find(query.components, T);
+        success, index := array_find(query.components, component);
 
         print_to_builder(*builder, "return query._iter_%;", index);
 
@@ -169,11 +170,21 @@ query_index :: (offsets: []s64, in: s64) -> s64 {
             result = mid;
             low = mid + 1;
         } else {
-            high = mid - 1;
+            high = mid;
         }
     }
 
     return result;
+
+    // result := 0;
+
+    // for 0..offsets.count-1 {
+    //     if offsets[it] > in {
+    //         break;
+    //     }
+    //     result = it;
+    // }
+    // return result;
 }
 
 none :: Type.[];
