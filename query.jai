@@ -37,14 +37,14 @@ init :: (world: World, query: *Query) {
         }
     }
 
-    query.entities = NewArray(valid_archs.count, []Entity);
-    query._offsets = NewArray(valid_archs.count, s64);
+    query.entities = NewArray(valid_archs.count, []Entity,, temp);
+    query._offsets = NewArray(valid_archs.count, s64,, temp);
 
     #insert -> string {
         builder: String_Builder;
 
         for 0..query.components.count-1 {
-            print_to_builder(*builder, "query._iter_% = Iterator(query.components[%]).{_values = NewArray(valid_archs.count, []query.components[%]), _offsets = query._offsets};\n", it, it, it);
+            print_to_builder(*builder, "query._iter_% = Iterator(query.components[%]).{_values = NewArray(valid_archs.count, []query.components[%],, temp), _offsets = query._offsets};\n", it, it, it);
         }
 
         return builder_to_string(*builder);
