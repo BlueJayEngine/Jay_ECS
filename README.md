@@ -7,7 +7,7 @@ A humble attempt to build an ergonomic ECS in Jai (The Language™) for healthy 
 
 ## Minimal example: 📦
 
-```odin
+```jai
 
 #import "Jay_ECS";
 
@@ -45,7 +45,7 @@ main :: () {
 ```
 
 ### Systems example: ⚙️
-```odin
+```jai
 #import "Basic";
 
 // Systems with no arguments fires once per "progress" call.
@@ -73,7 +73,7 @@ end_play :: () {
 
 
 ### Entity manipulation: 🔬
-```odin
+```jai
 
 // Create new entity:
 my_entity := new_entity(Component1.{}, Component2); 
@@ -95,7 +95,7 @@ destroy(my_entity);
 ```
 
 All functions above get the world from context, so if you need to call them from outside - pass the world before entity:
-```odin
+```jai
 my_entity := new_entity(world, .[Component1.{}, Component2]);
 set(world, my_entity, .[Component2.{"new_value"}]);
 erase(world, my_entity, .[Component2]);
@@ -108,7 +108,7 @@ destroy(world, my_entity);
 ### TODO: ⌛
 
  - Queries and Options:
- ```odin
+ ```jai
  // Options to iterate over entities that may not have the component, 
  // but should be processed somehow:
  system_with_option :: (entity: Entity, comp: Option(Component)) {
