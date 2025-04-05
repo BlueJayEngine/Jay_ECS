@@ -159,7 +159,6 @@ for_expansion :: (query: *Query, body: Code, flags: For_Flags) #expand {
 #scope_file
 
 query_index :: (offsets: []s64, in: s64) -> s64 {
-
     low := 0;
     high := offsets.count;
     result := 0;
@@ -175,16 +174,6 @@ query_index :: (offsets: []s64, in: s64) -> s64 {
     }
 
     return result;
-
-    // result := 0;
-
-    // for 0..offsets.count-1 {
-    //     if offsets[it] > in {
-    //         break;
-    //     }
-    //     result = it;
-    // }
-    // return result;
 }
 
 none :: Type.[];

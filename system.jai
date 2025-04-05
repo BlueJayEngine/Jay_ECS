@@ -25,7 +25,7 @@ handle_system :: (system_type: Type, index: s64, component_registry: []Type, bui
 
     arg_types := (cast(*Type_Info_Procedure)proc_type).argument_types;
 
-    print_to_builder(builder, "if condition & systems[%].run_if == systems[%].run_if { // Handling %\n", index, index, system_type);
+    print_to_builder(builder, "if condition & systems[%].run_if { // Handling %\n", index, index, system_type);
     print_to_builder(builder, "    sys_proc :: systems[%].proc;\n", index);
 
     for arg: arg_types {
@@ -51,12 +51,8 @@ handle_system :: (system_type: Type, index: s64, component_registry: []Type, bui
         print_to_builder(builder, "%\n", join(..cast_strings, ""));
         print_to_builder(builder, "    sys_proc(%);\n", join(..call_strings, ", "));
     }
-
-
     print_to_builder(builder, "}\n");
 }
-
-// TODO: system arguments rework to support scalars and harmonize passing by pointer and by value
 
 Argument_Collection_Flags :: enum_flags {
     INC_QUERIES;
