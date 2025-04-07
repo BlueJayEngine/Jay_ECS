@@ -3,7 +3,7 @@
 
 ![License](https://img.shields.io/badge/lang-JAI-orange.svg) ![License](https://img.shields.io/badge/license-Apache_2.0-blue.svg) ![License](https://img.shields.io/badge/badges-included-green.svg)
 
-A humble attempt to build an ergonomic ECS in Jai (The Language™) for healthy game development. 
+A humble attempt to build an ergonomic ECS for Jai (The Language™) for healthy game development. 
 
 ## Minimal example: 📦
 
