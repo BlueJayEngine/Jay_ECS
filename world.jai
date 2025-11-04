@@ -2,18 +2,18 @@
 #add_context compo: []Type;
 
 
-// The World represents the game state.  
-// It needs to know which systems you'll use.  
-// Systems are just procedures wrapped in a System poly struct (see system.jai).  
-//  
+// The World represents the game state.
+// It needs to know which systems you'll use.
+// Systems are just procedures wrapped in a System poly struct (see system.jai).
+//
 // Basic example:  
-//  
-//      world: World(systems = .[  
-//          System(tick),   // e.g., tick :: (entity: Entity) { ... }  
-//      ]);  
-//  
-// Systems can't be added/removed at runtime, so they all are conditional.  
-// Also they just run one after another, no analysis or parallelisation.  
+//
+//      world: World(systems = .[
+//          System(tick),   // e.g., tick :: (entity: Entity) { ... }
+//      ]);
+//
+// Systems can't be added/removed at runtime, so they all are conditional.
+// Also they just run one after another, no analysis or parallelisation.
 // This part of the ECS is still evolving, so it's a little messy.
 
 World :: struct (systems: [$SYS_COUNT]Type) {
@@ -101,7 +101,7 @@ progress :: inline (world: *World, delta_time: Delta_Time, condition: $CT = 0) #
 } {
 
     WT :: type_of(world);
-    
+ 
     procs :: Entity_Procs.{
         new_entity = (components: ..Any) -> Entity {
             return new_entity(cast(WT)context.world_ptr, components);
@@ -119,7 +119,7 @@ progress :: inline (world: *World, delta_time: Delta_Time, condition: $CT = 0) #
             dump(cast(WT)context.world_ptr, entity);
         },
     };
-    
+
     WT._progress_impl(world, xx delta_time, xx condition,, ent_procs = procs, world_ptr = world, jay_delta_time = delta_time);
 }
 
@@ -133,7 +133,7 @@ cleanup :: inline (world: *World, arch: *Archetype) {
             }
         }
     }
-} 
+}
 
 // Print world state into logs
 dump :: (world: World) {

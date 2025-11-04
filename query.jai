@@ -94,7 +94,7 @@ get_iter :: (query: Query, $component: Type) -> Iterator(component) {
 }
 
 for_expansion :: (iter: *Iterator, body: Code, flags: For_Flags) #expand {
-
+    
     for arch, a_index: iter._values {
         for val, index: arch {
             #if flags & .POINTER {
@@ -144,7 +144,6 @@ for_expansion :: (query: *Query, body: Code, flags: For_Flags) #expand {
         print_to_builder(*builder, join(..items, separator = ", "));
 
         print_to_builder(*builder, ";}");
-
         return builder_to_string(*builder);
     }
     

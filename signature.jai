@@ -79,8 +79,8 @@ sign_from_any :: (world: World, components: []Any) -> Signature(world.component_
     return result, values;
 }
 
-sign_and :: (a: Signature($REG), b: Signature(REG)) -> Signature(REG) {
-    result: Signature(REG);
+sign_and :: (a: Signature($REG), b: type_of(a)) -> type_of(a) {
+    result: type_of(a);
     #insert -> string {
         comparsions: [..]string;
         for index: 0..result.base.count-1 {
@@ -92,8 +92,8 @@ sign_and :: (a: Signature($REG), b: Signature(REG)) -> Signature(REG) {
     return result;
 }
 
-sign_or :: (a: Signature($REG), b: Signature(REG)) -> Signature(REG) {
-    result: Signature(REG);
+sign_or :: (a: Signature($REG), b: type_of(a)) -> type_of(a) {
+    result: type_of(a);
     #insert -> string {
         comparsions: [..]string;
         for index: 0..result.base.count-1 {
@@ -105,8 +105,8 @@ sign_or :: (a: Signature($REG), b: Signature(REG)) -> Signature(REG) {
     return result;
 }
 
-sign_not :: (a: Signature($REG), b: Signature(REG)) -> Signature(REG) {
-    result: Signature(REG) = a;
+sign_not :: (a: Signature($REG), b: type_of(a)) -> type_of(a) {
+    result: type_of(a) = a;
     #insert -> string {
         comparsions: [..]string;
         for index: 0..result.base.count-1 {
@@ -120,7 +120,7 @@ sign_not :: (a: Signature($REG), b: Signature(REG)) -> Signature(REG) {
 
 count_components :: inline (sign: Signature($REG)) -> s32 {
     return #insert -> string { 
-        counts := NewArray(Signature(REG).base.count, string);
+        counts := NewArray(type_of(sign).base.count, string);
         for 0..sign.base.count-1 {
             counts[it] = tprint("popcount(sign.base[%])", it);
         }

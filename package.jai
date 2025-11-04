@@ -78,9 +78,11 @@ Game_Stage_Temp :: enum_flags u64 {
     BEFORE_BEGIN;
     BEGIN;
     AFTER_BEGIN;
+
     BEFORE_TICK;
     TICK;
     AFTER_TICK;
+    
     BEFORE_END;
     END;
     AFTER_END;

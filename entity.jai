@@ -26,24 +26,29 @@ Entity_Procs :: struct {
     dump: (entity: Entity);
 }
 
+Entity_Command :: struct {
+    entity: Entity;
+    addition: []Any;
+    
+}
 
 #add_context ent_procs := _default_ent_procs;
 _default_ent_procs :: Entity_Procs.{
     new_entity = (components: ..Any) -> Entity {
-        log_error("Usage of entity procedures with no world argument is forbidden outside of system. Use 'new_entity :: (world: World, components: ..Any) -> Entity' instead");
+        log_error("Usage of entity procedures with no world argument is forbidden outside of a system. Use 'new_entity :: (world: World, components: ..Any) -> Entity' instead");
         return ENTITY_NULL;
     },
     set = (entity: Entity, components: ..Any) {
-        log_error("Usage of entity procedures with no world argument is forbidden outside of system. Use 'set :: (world: World, entity: Entity, components: ..Any)' instead");
+        log_error("Usage of entity procedures with no world argument is forbidden outside of a system. Use 'set :: (world: World, entity: Entity, components: ..Any)' instead");
     },
     erase = (entity: Entity, types: ..Type) {
-        log_error("Usage of entity procedures with no world argument is forbidden outside of system. Use 'erase :: (world: World, entity: Entity, targets: ..Type)' instead");
+        log_error("Usage of entity procedures with no world argument is forbidden outside of a system. Use 'erase :: (world: World, entity: Entity, targets: ..Type)' instead");
     },
     destroy = (entity: Entity) {
-        log_error("Usage of entity procedures with no world argument is forbidden outside of system. Use 'destroy :: (world: World, entity: Entity)' instead");
+        log_error("Usage of entity procedures with no world argument is forbidden outside of a system. Use 'destroy :: (world: World, entity: Entity)' instead");
     },
     dump = (entity: Entity) {
-        log_error("Usage of entity procedures with no world argument is forbidden outside of system. Use 'dump :: (world: World, entity: Entity)' instead");
+        log_error("Usage of entity procedures with no world argument is forbidden outside of a system. Use 'dump :: (world: World, entity: Entity)' instead");
     },
 };
 
