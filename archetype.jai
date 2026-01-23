@@ -147,6 +147,21 @@ instance_get_any :: (arch: *Archetype, index: s64) -> []Any {
     return values;
 }
 
+instance_get :: (arch: *Archetype, index: s64, component: Type) -> *void {
+    assert(arch && index >= 0, "Invalid arch (%) or index (%)", arch.signature, index);
+
+    exists, c_index := array_find(arch.signature.reg, component);
+
+    assert(exists, "Unable to find component % (%) in arch %", component, c_index, arch.signature);
+
+    comp_info := cast(*Type_Info)component; 
+    storage := arch.storage[c_index];
+
+    assert(storage != null, "Unable to get component % from archetype %", component, arch.signature);
+
+    return storage + (comp_info.runtime_size * index);
+}
+
 instance_get :: (arch: *Archetype, index: s64) -> [arch.SIZE]*void {
     values: [arch.SIZE]*void;
 

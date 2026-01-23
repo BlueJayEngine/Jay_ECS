@@ -104,19 +104,22 @@ progress :: inline (world: *World, delta_time: Delta_Time, condition: $CT = 0) #
  
     procs :: Entity_Procs.{
         new_entity = (components: ..Any) -> Entity {
-            return new_entity(cast(WT)context.world_ptr, components);
+            return inline new_entity(cast(WT)context.world_ptr, components);
         },
+        get = (entity: Entity, component: Type) -> *void {
+            return inline get(cast(WT)context.world_ptr, entity, component);
+        }, 
         set = (entity: Entity, components: ..Any) {
-            set(cast(WT)context.world_ptr, entity, components);
+            inline set(cast(WT)context.world_ptr, entity, components);
         },
         erase = (entity: Entity, types: ..Type) {
-            erase(cast(WT)context.world_ptr, entity, types);
+            inline erase(cast(WT)context.world_ptr, entity, types);
         },
         destroy = (entity: Entity) {
-            destroy(cast(WT)context.world_ptr, entity);
+            inline destroy(cast(WT)context.world_ptr, entity);
         },
         dump = (entity: Entity) {
-            dump(cast(WT)context.world_ptr, entity);
+            inline dump(cast(WT)context.world_ptr, entity);
         },
     };
 

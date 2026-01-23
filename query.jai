@@ -1,10 +1,10 @@
-Query :: struct (components: ..Type) {  
+Query :: struct(components: ..Type) {
     entities: [][]Entity;
     _offsets: []s64;
 
     #insert -> string {
         body_builder: String_Builder;
-        
+
         for component, index: components {
             print_to_builder(*body_builder, "_iter_%: Iterator(components[%]);\n", index, index);
         }
@@ -16,10 +16,10 @@ Query :: struct (components: ..Type) {
 }
 
 // Just a view for component values 
-Iterator :: struct (T: Type) {
+Iterator :: struct(T: Type) {
     _values: [][]T;
     _offsets: []s64;
-    count:s64;
+    count: s64;
 }
 
 init :: (world: World, query: *Query) {
@@ -43,7 +43,7 @@ init :: (world: World, query: *Query) {
     #insert -> string {
         builder: String_Builder;
 
-        for 0..query.components.count-1 {
+        for 0..query.components.count - 1 {
             print_to_builder(*builder, "query._iter_% = Iterator(query.components[%]).{_values = NewArray(valid_archs.count, []query.components[%],, temp), _offsets = query._offsets};\n", it, it, it);
         }
 
@@ -51,7 +51,7 @@ init :: (world: World, query: *Query) {
     }
 
     next_offset := 0;
-    
+
     for arch, a_index: valid_archs {
         query.entities[a_index] = arch.owners;
         query._offsets[a_index] = next_offset;
@@ -60,9 +60,10 @@ init :: (world: World, query: *Query) {
 
             walk_components(q_sign, #code {
                 success, index := array_find(query.components, comp_type);
+
                 print_to_builder(*builder, "query._iter_%._values[a_index].data = arch.storage[%];\n", index, c_index);
                 print_to_builder(*builder, "query._iter_%._values[a_index].count = arch.count;\n", index);
-            });            
+            });
 
             return builder_to_string(*builder);
         }
@@ -73,7 +74,7 @@ init :: (world: World, query: *Query) {
     #insert -> string {
         builder: String_Builder;
 
-        for 0..query.components.count-1 {
+        for 0..query.components.count - 1 {
             print_to_builder(*builder, "query._iter_%.count = next_offset;\n", it);
         }
 
@@ -94,16 +95,16 @@ get_iter :: (query: Query, $component: Type) -> Iterator(component) {
 }
 
 for_expansion :: (iter: *Iterator, body: Code, flags: For_Flags) #expand {
-    
     for arch, a_index: iter._values {
         for val, index: arch {
             #if flags & .POINTER {
                 `it := *val;
-            } else {
+            }
+            else {
                 `it := val;
             }
-            `it_index := iter._offsets[a_index]+index;
-            #insert (remove=#assert(false), break=break arch) body;
+            `it_index := iter._offsets[a_index] + index;
+            #insert(break = break arch, remove = #assert (false)) body;
         }
     }
 }
@@ -122,7 +123,6 @@ operator [] :: inline (iter: Iterator, index: s64) -> *iter.T {
 }
 
 for_expansion :: (query: *Query, body: Code, flags: For_Flags) #expand {
-    
     #insert -> string {
         builder: String_Builder;
 
@@ -130,7 +130,6 @@ for_expansion :: (query: *Query, body: Code, flags: For_Flags) #expand {
 
         returns: [..]string;
         items: [..]string;
-        
 
         for comp_type, index: query.components {
             array_add(*items, sprint("*query._iter_%._values[`__jay_a_index][`__jay_b_index]", index));
@@ -146,11 +145,11 @@ for_expansion :: (query: *Query, body: Code, flags: For_Flags) #expand {
         print_to_builder(*builder, ";}");
         return builder_to_string(*builder);
     }
-    
-    for `__jay_a_index: 0..query.entities.count-1 {
+
+    for `__jay_a_index: 0..query.entities.count - 1 {
         for `it, `__jay_b_index: query.entities[__jay_a_index] {
-            `it_index := query._offsets[__jay_a_index]+__jay_b_index;
-            #insert (remove={destroy(query.entities[__jay_a_index][__jay_b_index]);}, break=break __jay_a_index) body;
+            `it_index := query._offsets[__jay_a_index] + __jay_b_index;
+            #insert(break = break __jay_a_index, remove = {destroy(query.entities[__jay_a_index][__jay_b_index]);}) body;
         }
     }
 }
@@ -167,7 +166,8 @@ query_index :: (offsets: []s64, in: s64) -> s64 {
         if (offsets[mid] <= in) {
             result = mid;
             low = mid + 1;
-        } else {
+        }
+        else {
             high = mid;
         }
     }

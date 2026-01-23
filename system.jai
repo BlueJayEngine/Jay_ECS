@@ -1,7 +1,7 @@
 // System is a poly struct that wraps procedures and also may store condition enum flag value. 
 // TODO: Add run_if validation
 
-System :: struct (proc: $PT, run_if: u64 = 0) {}
+System :: struct(proc: $PT, run_if: u64 = 0) {}
 
 // As delta_time is part of system handling it's here too
 
@@ -15,11 +15,10 @@ delta_time :: inline () -> Delta_Time {
 
 // The thing that generates system handlers. May be rewritten in unexpected ways
 handle_system :: (system_type: Type, index: s64, component_registry: []Type, builder: *String_Builder) {
-
     params := (cast(*Type_Info_Struct)system_type).specified_parameters;
     proc_type := params[1].type;
 
-    per_entity := false; 
+    per_entity := false;
     call_strings: [..]string;
     cast_strings: [..]string;
 
@@ -47,7 +46,8 @@ handle_system :: (system_type: Type, index: s64, component_registry: []Type, bui
         print_to_builder(builder, "        }\n");
         print_to_builder(builder, "        cleanup(*world, arch);\n");
         print_to_builder(builder, "    }\n");
-    } else {
+    }
+    else {
         print_to_builder(builder, "%\n", join(..cast_strings, ""));
         print_to_builder(builder, "    sys_proc(%);\n", join(..call_strings, ", "));
     }
@@ -60,7 +60,6 @@ Argument_Collection_Flags :: enum_flags {
 }
 
 collect_arg_types :: (proc_type: *Type_Info, result: *[..]Type, flags: Argument_Collection_Flags = 0) {
-
     handle_types((cast(*Type_Info_Procedure)proc_type).argument_types, result, flags);
 }
 
@@ -92,7 +91,11 @@ handle_types :: (types: []*Type_Info, result: *[..]Type, flags: Argument_Collect
                     }
 
                     if !(flags & .INC_QUERIES) continue;
-                }                
+                }
+            }
+
+            case .ARRAY; {
+            log("HELP, ITS ARRAY");
             }
         }
 
@@ -104,27 +107,25 @@ handle_types :: (types: []*Type_Info, result: *[..]Type, flags: Argument_Collect
 
 // Generate system signature
 sign_system :: ($reg: [$SIZE]Type, $system: Type) -> Signature(reg) {
-
     proc_types :: #run -> []Type {
         res: [..]Type;
         collect_arg_types(cast(*Type_Info)system, *res);
 
         return res;
-    };
+    }
 
     return sign(reg, proc_types);
 }
 
 get_arg_template :: (arg_type: Type, reg: []Type) -> (call_str: string, cast_str: string, per_ent: bool) {
-
     if arg_type == {
         case Entity; {
-            return tprint("owner"), "", true;
-        }
+                return tprint("owner"), "", true;
+            }
 
         case Delta_Time; {
-            return tprint("delta_time"), "", false;
-        }
+                return tprint("delta_time"), "", false;
+            }
     }
 
     arg_type_info := cast(*Type_Info)arg_type;
@@ -135,8 +136,8 @@ get_arg_template :: (arg_type: Type, reg: []Type) -> (call_str: string, cast_str
 
         if src_info == type_info(Query()).polymorph_source_struct {
             struct_index := cast(u64)struct_info;
-            return tprint("query_%", struct_index), tprint("\tquery_%: #run -> Type { q_index := %; return <<(cast(*Type) *q_index); }\n\tinit(world, *query_%);", struct_index, struct_index, struct_index), false;
-        }                
+            return tprint("query_%", struct_index), tprint("\tquery_%: #run -> Type { q_index : u64 = %; return (cast(*Type) *q_index).*; }\n\tinit(world, *query_%);", struct_index, struct_index, struct_index), false;
+        }
     }
 
     if arg_type_info.type == .POINTER {
@@ -150,3 +151,4 @@ get_arg_template :: (arg_type: Type, reg: []Type) -> (call_str: string, cast_str
     if !registred log_error("% is not registred!", arg_type);
     return tprint("arg_%[inst_index]", arg_index), tprint("            arg_% := cast(*component_registry[%])arch.storage[%];\n", arg_index, arg_index, arg_index), true;
 }
+

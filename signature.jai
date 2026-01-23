@@ -56,8 +56,10 @@ sign_from_any :: (world: World, components: []Any) -> Signature(world.component_
         type: Type;
         value: *void = null;
         
-        if !component.type {
-            log_error("Type is %. That's should never be happening", component.type);
+        #if DEBUG {
+            if !component.type {
+                log_error("Type is %. That's should never be happening", component.type);
+            }
         }
         
         if component.type.type == .TYPE {
