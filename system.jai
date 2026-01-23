@@ -50,14 +50,8 @@ get_bach_size :: inline (proc_info_in: *Type_Info_Procedure) -> s64 {
             else continue;
 
             parsed, ok, remainder := string_to_int(value_str, 10, s64);
-            if !ok || remainder {
-                log_error("Invalid bach_size note '%'", note);
-                continue;
-            }
-            if parsed <= 0 {
-                log_error("bach_size must be greater than zero. Got %.", parsed);
-                continue;
-            }
+            assert(ok && !remainder, "Invalid bach_size note '%'", note);
+            assert(parsed > 0, "bach_size must be greater than zero. Got %.", parsed);
 
             size = parsed;
         }
@@ -101,10 +95,7 @@ handle_system :: (system_type: Type, index: s64, component_registry: []Type, bui
         }
     }
 
-    if batched && non_batched_components {
-        log_error("System % mixes batched and non-batched component arguments.", system_type);
-        return;
-    }
+    assert(!(batched && non_batched_components), "System % mixes batched and non-batched component arguments.", system_type);
 
     if per_entity {
         print_to_builder(builder, "    sign :: #run sign_system(component_registry, systems[%].PT);\n", index);
@@ -179,9 +170,8 @@ handle_types :: (types: []*Type_Info, result: *[..]Type, flags: Argument_Collect
 
             case .ARRAY; {
                 arr_info := (cast(*Type_Info_Array)arg_info);
-                if arr_info.array_type == .VIEW {
-                    arg = (cast(*Type)*arr_info.element_type).*;
-                }
+                assert(arr_info.array_type == .VIEW, "Only array views are supported as system component arguments. Got %.", arg_info);
+                arg = (cast(*Type)*arr_info.element_type).*;
             }
         }
 
@@ -228,22 +218,21 @@ get_arg_template :: (arg_type: Type, reg: []Type) -> (call_str: string, cast_str
 
     if arg_type_info.type == .ARRAY {
         arr_info := cast(*Type_Info_Array)arg_type_info;
-        if arr_info.array_type == .VIEW {
-            target := (cast(*Type)*arr_info.element_type).*;
-            registred, arg_index := array_find(reg, target);
-            if !registred log_error("% is not registred!", target);
-            return tprint("([]component_registry[%]).{ data = arg_%_base + batch_index, count = batch_size }", arg_index, arg_index), tprint("            arg_%_base := cast(*component_registry[%])arch.storage[%];\n", arg_index, arg_index, arg_index), true, true;
-        }
+        assert(arr_info.array_type == .VIEW, "Only array views are supported as batched component arguments. Got %.", arg_type_info);
+        target := (cast(*Type)*arr_info.element_type).*;
+        registred, arg_index := array_find(reg, target);
+        assert(registred, "% is not registered!", target);
+        return tprint("([]component_registry[%]).{ data = arg_%_base + batch_index, count = batch_size }", arg_index, arg_index), tprint("            arg_%_base := cast(*component_registry[%])arch.storage[%];\n", arg_index, arg_index, arg_index), true, true;
     }
 
     if arg_type_info.type == .POINTER {
         ptr_target := (cast(*Type)*(cast(*Type_Info_Pointer)arg_type_info).pointer_to).*;
         registred, arg_index := array_find(reg, ptr_target);
-        if !registred log_error("% is not registred!", ptr_target);
+        assert(registred, "% is not registered!", ptr_target);
         return tprint("*arg_%[inst_index]", arg_index), tprint("            arg_% := cast(*component_registry[%])arch.storage[%];\n", arg_index, arg_index, arg_index), true, false;
     }
 
     registred, arg_index := array_find(reg, arg_type);
-    if !registred log_error("% is not registred!", arg_type);
+    assert(registred, "% is not registered!", arg_type);
     return tprint("arg_%[inst_index]", arg_index), tprint("            arg_% := cast(*component_registry[%])arch.storage[%];\n", arg_index, arg_index, arg_index), true, false;
 }
