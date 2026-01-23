@@ -9,6 +9,63 @@ Delta_Time :: float64;
 
 #add_context jay_delta_time: Delta_Time;
 
+Type_Info_Procedure_With_Notes :: struct {
+    using #as info: Type_Info;
+
+    argument_types: [] *Type_Info;
+    return_types:   [] *Type_Info;
+
+    procedure_flags: Type_Info_Procedure.Flags;
+    notes: [] string;
+}
+
+starts_with :: inline (s: string, prefix: string) -> bool {
+    if s.count < prefix.count return false;
+    for index: 0..prefix.count-1 {
+        if s[index] != prefix[index] return false;
+    }
+    return true;
+}
+
+get_bach_size :: inline (proc_info_in: *Type_Info_Procedure) -> s64 {
+    size: s64 = 4;
+
+    proc_notes := cast(*Type_Info_Procedure_With_Notes)proc_info_in;
+
+    notes_view := proc_notes.notes;
+
+    if notes_view.data && notes_view.count > 0 && notes_view.count < 64 {
+        prefix := "bach_size:";
+        alt_prefix := "bach_size=";
+
+        for note: notes_view {
+            value_str: string;
+
+            if note.count > prefix.count && starts_with(note, prefix) {
+                value_str = advance(note, prefix.count);
+            }
+            else if note.count > alt_prefix.count && starts_with(note, alt_prefix) {
+                value_str = advance(note, alt_prefix.count);
+            }
+            else continue;
+
+            parsed, ok, remainder := string_to_int(value_str, 10, s64);
+            if !ok || remainder {
+                log_error("Invalid bach_size note '%'", note);
+                continue;
+            }
+            if parsed <= 0 {
+                log_error("bach_size must be greater than zero. Got %.", parsed);
+                continue;
+            }
+
+            size = parsed;
+        }
+    }
+
+    return size;
+}
+
 delta_time :: inline () -> Delta_Time {
     return context.jay_delta_time;
 }
@@ -25,7 +82,9 @@ handle_system :: (system_type: Type, index: s64, component_registry: []Type, bui
     call_strings: [..]string;
     cast_strings: [..]string;
 
-    arg_types := (cast(*Type_Info_Procedure)proc_type).argument_types;
+    proc_info := cast(*Type_Info_Procedure)proc_type;
+    arg_types := proc_info.argument_types;
+    batch_target = get_bach_size(proc_info);
 
     print_to_builder(builder, "if condition & systems[%].run_if { // Handling %\n", index, index, system_type);
     print_to_builder(builder, "    sys_proc :: systems[%].proc;\n", index);
