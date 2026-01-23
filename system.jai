@@ -19,6 +19,9 @@ handle_system :: (system_type: Type, index: s64, component_registry: []Type, bui
     proc_type := params[1].type;
 
     per_entity := false;
+    batched := false;
+    non_batched_components := false;
+    batch_target: s64 = 4;
     call_strings: [..]string;
     cast_strings: [..]string;
 
@@ -29,10 +32,19 @@ handle_system :: (system_type: Type, index: s64, component_registry: []Type, bui
 
     for arg: arg_types {
         arg_type := (cast(*Type)*arg).*;
-        call, casting, per_ent := get_arg_template(arg_type, component_registry);
+        call, casting, per_ent, per_batch := get_arg_template(arg_type, component_registry);
         array_add(*call_strings, call);
         array_add(*cast_strings, casting);
         per_entity |= per_ent;
+        batched |= per_batch;
+        if per_ent && !per_batch {
+            non_batched_components = true;
+        }
+    }
+
+    if batched && non_batched_components {
+        log_error("System % mixes batched and non-batched component arguments.", system_type);
+        return;
     }
 
     if per_entity {
@@ -40,9 +52,21 @@ handle_system :: (system_type: Type, index: s64, component_registry: []Type, bui
         print_to_builder(builder, "    for *arch: world.archetypes {\n");
         print_to_builder(builder, "        if match(arch.signature, sign) {\n");
         print_to_builder(builder, "%\n", join(..cast_strings, ""));
-        print_to_builder(builder, "            for owner, inst_index: arch.owners {\n");
-        print_to_builder(builder, "                sys_proc(%);\n", join(..call_strings, ", "));
-        print_to_builder(builder, "            }\n");
+        if batched {
+            print_to_builder(builder, "            batch_index: s64 = 0;\n");
+            print_to_builder(builder, "            batch_target: s64 = %;\n", batch_target);
+            print_to_builder(builder, "            while batch_index < arch.count {\n");
+            print_to_builder(builder, "                batch_size := arch.count - batch_index;\n");
+            print_to_builder(builder, "                if batch_size > batch_target batch_size = batch_target;\n");
+            print_to_builder(builder, "                sys_proc(%);\n", join(..call_strings, ", "));
+            print_to_builder(builder, "                batch_index += batch_target;\n");
+            print_to_builder(builder, "            }\n");
+        }
+        else {
+            print_to_builder(builder, "            for owner, inst_index: arch.owners {\n");
+            print_to_builder(builder, "                sys_proc(%);\n", join(..call_strings, ", "));
+            print_to_builder(builder, "            }\n");
+        }
         print_to_builder(builder, "        }\n");
         print_to_builder(builder, "        cleanup(*world, arch);\n");
         print_to_builder(builder, "    }\n");
@@ -95,7 +119,10 @@ handle_types :: (types: []*Type_Info, result: *[..]Type, flags: Argument_Collect
             }
 
             case .ARRAY; {
-            log("HELP, ITS ARRAY");
+                arr_info := (cast(*Type_Info_Array)arg_info);
+                if arr_info.array_type == .VIEW {
+                    arg = (cast(*Type)*arr_info.element_type).*;
+                }
             }
         }
 
@@ -117,14 +144,14 @@ sign_system :: ($reg: [$SIZE]Type, $system: Type) -> Signature(reg) {
     return sign(reg, proc_types);
 }
 
-get_arg_template :: (arg_type: Type, reg: []Type) -> (call_str: string, cast_str: string, per_ent: bool) {
+get_arg_template :: (arg_type: Type, reg: []Type) -> (call_str: string, cast_str: string, per_ent: bool, batched: bool) {
     if arg_type == {
         case Entity; {
-                return tprint("owner"), "", true;
+                return tprint("owner"), "", true, false;
             }
 
         case Delta_Time; {
-                return tprint("delta_time"), "", false;
+                return tprint("delta_time"), "", false, false;
             }
     }
 
@@ -136,7 +163,17 @@ get_arg_template :: (arg_type: Type, reg: []Type) -> (call_str: string, cast_str
 
         if src_info == type_info(Query()).polymorph_source_struct {
             struct_index := cast(u64)struct_info;
-            return tprint("query_%", struct_index), tprint("\tquery_%: #run -> Type { q_index : u64 = %; return (cast(*Type) *q_index).*; }\n\tinit(world, *query_%);", struct_index, struct_index, struct_index), false;
+            return tprint("query_%", struct_index), tprint("\tquery_%: #run -> Type { q_index : u64 = %; return (cast(*Type) *q_index).*; }\n\tinit(world, *query_%);", struct_index, struct_index, struct_index), false, false;
+        }
+    }
+
+    if arg_type_info.type == .ARRAY {
+        arr_info := cast(*Type_Info_Array)arg_type_info;
+        if arr_info.array_type == .VIEW {
+            target := (cast(*Type)*arr_info.element_type).*;
+            registred, arg_index := array_find(reg, target);
+            if !registred log_error("% is not registred!", target);
+            return tprint("([]component_registry[%]).{ data = arg_%_base + batch_index, count = batch_size }", arg_index, arg_index), tprint("            arg_%_base := cast(*component_registry[%])arch.storage[%];\n", arg_index, arg_index, arg_index), true, true;
         }
     }
 
@@ -144,11 +181,10 @@ get_arg_template :: (arg_type: Type, reg: []Type) -> (call_str: string, cast_str
         ptr_target := (cast(*Type)*(cast(*Type_Info_Pointer)arg_type_info).pointer_to).*;
         registred, arg_index := array_find(reg, ptr_target);
         if !registred log_error("% is not registred!", ptr_target);
-        return tprint("*arg_%[inst_index]", arg_index), tprint("            arg_% := cast(*component_registry[%])arch.storage[%];\n", arg_index, arg_index, arg_index), true;
+        return tprint("*arg_%[inst_index]", arg_index), tprint("            arg_% := cast(*component_registry[%])arch.storage[%];\n", arg_index, arg_index, arg_index), true, false;
     }
 
     registred, arg_index := array_find(reg, arg_type);
     if !registred log_error("% is not registred!", arg_type);
-    return tprint("arg_%[inst_index]", arg_index), tprint("            arg_% := cast(*component_registry[%])arch.storage[%];\n", arg_index, arg_index, arg_index), true;
+    return tprint("arg_%[inst_index]", arg_index), tprint("            arg_% := cast(*component_registry[%])arch.storage[%];\n", arg_index, arg_index, arg_index), true, false;
 }
-
