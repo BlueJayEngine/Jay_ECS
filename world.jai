@@ -19,7 +19,7 @@
 World :: struct (systems: [$SYS_COUNT]Type) {
 
     entities: [..] Entity_State(component_registry);
-    thumbstones: [..] s64;
+    thumbstones: [..] u32;
 
     archetypes: [..] Archetype(component_registry);
     dirty_archs: [..] *Archetype(component_registry);

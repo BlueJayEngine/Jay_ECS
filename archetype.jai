@@ -66,7 +66,7 @@ expand :: (arch: *Archetype) {
     }
 }
 
-make_instance :: (arch: *Archetype, e_state: *$EST/World.Entity_State, values: []*void = .[]) {
+make_instance :: (arch: *Archetype, e_state: *$EST/World.Entity_State, entity: Entity, values: []*void = .[]) {
     if arch.count>=arch.max_count {
         expand(arch);
     }
@@ -93,7 +93,7 @@ make_instance :: (arch: *Archetype, e_state: *$EST/World.Entity_State, values: [
 
 
     arch.owners.count += 1;
-    arch.owners[arch.count] = e_state.wrapped;
+    arch.owners[arch.count] = entity;
     // log("%", arch.owners);
 
     e_state.arch = arch;
@@ -107,7 +107,7 @@ instance_begin_destroy :: (arch: *Archetype, index: s64) {
 }
 
 instance_destroy :: (world: World, arch: *Archetype, index: s64) {
-    owner_info := *world.entities[arch.owners[index]];
+    owner_info := *world.entities[arch.owners[index].index];
 
     arch.owners[index], arch.owners[arch.owners.count-1] = arch.owners[arch.owners.count-1], arch.owners[index];
 

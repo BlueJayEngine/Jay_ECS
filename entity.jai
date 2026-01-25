@@ -1,17 +1,13 @@
-Entity :: #type,distinct s64;
-
-ENTITY_NULL :: 0xffffffff;
-
-Entity_Info :: struct {
+Entity :: struct {
     index: u32;
     generation: u32;
-    #overlay (index) wrapped: Entity;
+    #overlay (index) body: s64;
 }
 
-#assert (size_of(Entity) == size_of(Entity_Info));
+ENTITY_NULL :: Entity.{};
 
 Entity_State :: struct(reg: [$SIZE]Type) {
-    using info: Entity_Info;
+    generation: u32;
 
     arch: *Archetype(reg);
     arch_index: s64;
@@ -56,18 +52,8 @@ _default_ent_procs :: Entity_Procs.{
             log_error("Usage of entity procedures with no world argument is forbidden outside of a system. Use 'dump :: (world: World, entity: Entity)' instead");
         }
     };
-
-wrap :: inline (e_info: Entity_Info) -> Entity {
-    return e_info.wrapped;
-}
-
-unwrap :: inline (entity: Entity) -> Entity_Info {
-    return .{ wrapped = entity };
-}
-
 is_valid :: inline (world: World, entity: Entity) -> bool {
-    e_info := unwrap(entity);
-    return e_info.generation == world.entities[e_info.index].generation;
+    return entity.generation == world.entities[entity.index].generation;
 }
 
 new_entity :: inline (components: ..Any) -> Entity {
@@ -97,39 +83,38 @@ dump :: inline (entity: Entity) {
 }
 
 new_entity :: inline (world: World, components: []Any) -> Entity {
-    e_index: s64;
+    e_index: u32;
 
     if world.thumbstones.count {
         e_index = pop(*world.thumbstones);
     }
     else {
-        e_index = world.entities.count;
-        array_add(*world.entities, .{ index = xx e_index });
+        e_index = xx world.entities.count;
+
+        array_add(*world.entities, .{});
     }
 
     entity_info := *world.entities[e_index];
-    entity := wrap(Entity_Info.{ xx e_index, entity_info.generation });
+    entity := Entity.{ e_index, entity_info.generation };
 
     target_signature, values := sign_from_any(world, components);
 
     arch: *Archetype(world.component_registry) = find_archetype(world, target_signature);
 
-    make_instance(arch, entity_info, values);
+    make_instance(arch, entity_info, entity, values);
 
     return entity;
 }
 
 get :: inline (world: World, entity: Entity, component: Type) -> *void {
-    e_info := unwrap(entity);
-    e_state := *world.entities[e_info.index];
+    e_state := *world.entities[entity.index];
 
     // Use the component's position within its archetype, not the global entity index.
     return instance_get(e_state.arch, e_state.arch_index, component);
 }
 
 set :: inline (world: World, entity: Entity, components: []Any) {
-    e_info := unwrap(entity);
-    e_state := *world.entities[e_info.index];
+    e_state := *world.entities[entity.index];
 
     from_arch := e_state.arch;
 
@@ -145,16 +130,15 @@ set :: inline (world: World, entity: Entity, components: []Any) {
     to_arch := find_archetype(world, target_signature);
     old_values := instance_get(from_arch, e_state.arch_index);
     old_state := e_state.*;
-    make_instance(to_arch, e_state, old_values);
+    make_instance(to_arch, e_state, entity, old_values);
     instance_set(to_arch, e_state.arch_index, comp_mask, values);
     instance_begin_destroy(from_arch, old_state.arch_index);
 }
 
-erase :: inline (world: World, entity: Entity, targets: []Type) {                      // TODO: change name, erase is not so suitable for component removal
+erase :: inline (world: World, entity: Entity, targets: []Type) { // TODO: change name, erase is not so suitable for component removal
     mask := sign(world.component_registry, targets);
-
-    e_info := unwrap(entity);
-    e_state := *world.entities[e_info.index];
+    
+    e_state := *world.entities[entity.index];
 
     from_arch := e_state.arch;
 
@@ -169,15 +153,14 @@ erase :: inline (world: World, entity: Entity, targets: []Type) {               
     old_values := instance_get(from_arch, e_state.arch_index);
     old_state := e_state.*;
 
-    make_instance(to_arch, e_state, old_values);
+    make_instance(to_arch, e_state, entity, old_values);
     instance_begin_destroy(from_arch, old_state.arch_index);
 }
 
 destroy :: inline (world: World, entity: Entity) {
-    e_info := unwrap(entity);
-    e_state := *world.entities[e_info.index];
+    e_state := *world.entities[entity.index];
 
-    array_add(*world.thumbstones, e_info.index);
+    array_add(*world.thumbstones, entity.index);
 
     instance_begin_destroy(e_state.arch, e_state.arch_index);
 
@@ -187,13 +170,12 @@ destroy :: inline (world: World, entity: Entity) {
 }
 
 dump :: inline (world: World, entity: Entity) {
-    e_info := unwrap(entity);
-    e_state := *world.entities[e_info.index];
+    e_state := *world.entities[entity.index];
 
     if !is_valid(world, entity) {
-        log("%", tprint("Entity_% (info: %, state: INVALID): []\n", entity, e_info));
+        log("%", tprint("Entity_% (generation: %, state: INVALID): []\n", entity.index, entity.generation));
         return;
     }
 
-    log("%", tprint("Entity_% (info: %, state: %): %\n", entity, e_info, FormatStruct.{ formatter = .{ e_state.* }, draw_type_name = false, use_long_form_if_more_than_this_many_members = 0 }, instance_get_any(e_state.arch, e_state.arch_index)));
+    log("%", tprint("Entity_% (generation: %, state: %): %\n", entity.index, entity.generation, FormatStruct.{ formatter = .{ e_state.* }, draw_type_name = false, use_long_form_if_more_than_this_many_members = 0 }, instance_get_any(e_state.arch, e_state.arch_index)));
 }

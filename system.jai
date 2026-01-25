@@ -72,13 +72,13 @@ handle_system :: (system_type: Type, index: s64, component_registry: []Type, bui
     per_entity := false;
     batched := false;
     non_batched_components := false;
-    batch_target: s64 = 4;
+    batch_size: s64 = 4;
     call_strings: [..]string;
     cast_strings: [..]string;
 
     proc_info := cast(*Type_Info_Procedure)proc_type;
     arg_types := proc_info.argument_types;
-    batch_target = get_bach_size(proc_info);
+    batch_size = get_bach_size(proc_info);
 
     print_to_builder(builder, "if condition & systems[%].run_if { // Handling %\n", index, index, system_type);
     print_to_builder(builder, "    sys_proc :: systems[%].proc;\n", index);
@@ -104,12 +104,13 @@ handle_system :: (system_type: Type, index: s64, component_registry: []Type, bui
         print_to_builder(builder, "%\n", join(..cast_strings, ""));
         if batched {
             print_to_builder(builder, "            batch_index: s64 = 0;\n");
-            print_to_builder(builder, "            batch_target: s64 = %;\n", batch_target);
+            print_to_builder(builder, "            batch_size: s64 = %;\n", batch_size);
+            print_to_builder(builder, "            owners: []Entity;\n");
+            print_to_builder(builder, "            owners.count = batch_size;\n");
             print_to_builder(builder, "            while batch_index < arch.count {\n");
-            print_to_builder(builder, "                batch_size := arch.count - batch_index;\n");
-            print_to_builder(builder, "                if batch_size > batch_target batch_size = batch_target;\n");
+            print_to_builder(builder, "                owners.data = *arch.owners[batch_index];\n");
             print_to_builder(builder, "                sys_proc(%);\n", join(..call_strings, ", "));
-            print_to_builder(builder, "                batch_index += batch_target;\n");
+            print_to_builder(builder, "                batch_index += batch_size;\n");
             print_to_builder(builder, "            }\n");
         }
         else {
@@ -196,11 +197,11 @@ sign_system :: ($reg: [$SIZE]Type, $system: Type) -> Signature(reg) {
 get_arg_template :: (arg_type: Type, reg: []Type) -> (call_str: string, cast_str: string, per_ent: bool, batched: bool) {
     if arg_type == {
         case Entity; {
-                return tprint("owner"), "", true, false;
+                return "owner", "", true, false;
             }
 
         case Delta_Time; {
-                return tprint("delta_time"), "", false, false;
+                return "delta_time", "", false, false;
             }
     }
 
@@ -220,6 +221,11 @@ get_arg_template :: (arg_type: Type, reg: []Type) -> (call_str: string, cast_str
         arr_info := cast(*Type_Info_Array)arg_type_info;
         assert(arr_info.array_type == .VIEW, "Only array views are supported as batched component arguments. Got %.", arg_type_info);
         target := (cast(*Type)*arr_info.element_type).*;
+
+        if target == Entity {
+            return "owners", "", true, true;
+        }
+
         registred, arg_index := array_find(reg, target);
         assert(registred, "% is not registered!", target);
         return tprint("([]component_registry[%]).{ data = arg_%_base + batch_index, count = batch_size }", arg_index, arg_index), tprint("            arg_%_base := cast(*component_registry[%])arch.storage[%];\n", arg_index, arg_index, arg_index), true, true;
