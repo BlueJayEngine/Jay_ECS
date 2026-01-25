@@ -71,8 +71,14 @@ end_play :: () {
 }
 ```
 
+- **Random access**
+You can get pointer to the component of the entity by using get(Entity, Type). What you need to know: the random access is slow. ~10x slower than everything else. Use it only if you have entity-to-entity connection.
+```jai
+c1 := get(it, Component1);
+```
+
 ### Query systems: 🔍
-The ECS supports multiple query shapes so systems can pick the access pattern they need. The snippets below come from `main.jai` in the Jay repo.
+The ECS supports multiple query shapes so systems can pick the access pattern they need.
 
 - **Per-entity query loop** — pull grouped components directly:
 ```jai
@@ -105,22 +111,6 @@ test_iter :: inline (query: Query(Component1, Component2, Component3, Component4
         c3.valb1 += 1;
     }
     for *c4, index: iter4 {
-        c4.valc2.index += 1;
-    }
-}
-```
-
-- **Random access** — fetch components by entity inside the loop:
-```jai
-test_random :: inline (query: Query(Component1, Component2, Component3, Component4)) {
-    for query {
-        c1 := get(it, Component1);
-        c2 := get(it, Component2);
-        c3 := get(it, Component3);
-        c4 := get(it, Component4);
-        c1.val1 += 1;
-        c2.vala1 += 1;
-        c3.valb1 += 1;
         c4.valc2.index += 1;
     }
 }
@@ -176,6 +166,7 @@ destroy(world, my_entity);
 
 ### TODO: ⌛
 
- - Options support for components
+ - Optional components support
+ - Entity relationships (flecs-like)
  - Auto-Parallelization
  - Advanced system management (ordering, bundling and other) 
