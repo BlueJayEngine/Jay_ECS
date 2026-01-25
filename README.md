@@ -71,6 +71,75 @@ end_play :: () {
 }
 ```
 
+### Query systems: 🔍
+The ECS supports multiple query shapes so systems can pick the access pattern they need. The snippets below come from `main.jai` in the Jay repo.
+
+- **Per-entity query loop** — pull grouped components directly:
+```jai
+test_each :: inline (query: Query(Component1, Component2, Component3, Component4)) {
+    for query {
+        c1, c2, c3, c4 := components();
+        c1.val1 += 1;
+        c2.vala1 += 1;
+        c3.valb1 += 1;
+        c4.valc2.index += 1; // Component4 holds an Entity
+    }
+}
+```
+
+- **Iterator access** — iterate each component stream separately:
+```jai
+test_iter :: inline (query: Query(Component1, Component2, Component3, Component4)) {
+    iter1 := get_iter(query, Component1);
+    iter2 := get_iter(query, Component2);
+    iter3 := get_iter(query, Component3);
+    iter4 := get_iter(query, Component4);
+
+    for *c1, index: iter1 {
+        c1.val1 += 1;
+    }
+    for *c2, index: iter2 {
+        c2.vala1 += 1;
+    }
+    for *c3, index: iter3 {
+        c3.valb1 += 1;
+    }
+    for *c4, index: iter4 {
+        c4.valc2.index += 1;
+    }
+}
+```
+
+- **Random access** — fetch components by entity inside the loop:
+```jai
+test_random :: inline (query: Query(Component1, Component2, Component3, Component4)) {
+    for query {
+        c1 := get(it, Component1);
+        c2 := get(it, Component2);
+        c3 := get(it, Component3);
+        c4 := get(it, Component4);
+        c1.val1 += 1;
+        c2.vala1 += 1;
+        c3.valb1 += 1;
+        c4.valc2.index += 1;
+    }
+}
+```
+
+- **Batched arrays** — process slices of components (and entities) at once:
+```jai
+test_bach :: inline (e: []Entity, c1: []Component1, c2: []Component2, c3: []Component3, c4: []Component4) {
+    for 0..3 { // batch size defined on the system signature
+        c1[it].val1 += 1;
+        c2[it].vala1 += 1;
+        c3[it].valb1 += 1;
+        c4[it].valc2.index += 1;
+    }
+}
+```
+
+Systems can also take `entity: Entity` alongside components when they need the owning entity in addition to component data.
+
 
 ### Entity manipulation: 🔬
 ```jai
@@ -107,16 +176,6 @@ destroy(world, my_entity);
 
 ### TODO: ⌛
 
- - Queries and Options:
- ```jai
- // Options to iterate over entities that may not have the component, 
- // but should be processed somehow:
- system_with_option :: (entity: Entity, comp: Option(Component)) {
- }
- 
- // Queries to iterate over other entities that have queried components:
- system_with_option :: (entity: Entity, others: Query(Component, Other_Component)) {
- }
- ```
+ - Options support for components
  - Auto-Parallelization
  - Advanced system management (ordering, bundling and other) 
