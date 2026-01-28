@@ -63,9 +63,9 @@ sign_from_any :: (world: World, components: []Any) -> Signature(world.component_
         }
         
         if component.type.type == .TYPE {
-            type = (cast(*Type)component.value_pointer).*;
+            type = reinterp(*Type, component.value_pointer).*;
         } else {
-            type = (cast(*Type)*component.type).*;
+            type = reinterp(Type, component.type);
             value = component.value_pointer;
         }
 

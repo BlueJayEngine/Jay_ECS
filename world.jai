@@ -144,7 +144,7 @@ dump :: (world: World) {
 
     init_string_builder(*builder,, temp);
 
-    print_to_builder(*builder, "World_%:\n", cast(s64)*world);
+    print_to_builder(*builder, "World_%:\n", reinterp(s64, *world));
 
     for * world.archetypes dump(it, *builder);
 

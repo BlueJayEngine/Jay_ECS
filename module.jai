@@ -3,6 +3,7 @@
 #import "Sort";
 #import "Bit_Operations";
 #import "Compiler";
+#import "Jay_Utils";
 
 #load "world.jai";       // Everything lives here
 #load "archetype.jai";   // Everything stores here

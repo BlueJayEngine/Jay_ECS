@@ -154,7 +154,7 @@ instance_get :: (arch: *Archetype, index: s64, component: Type) -> *void {
 
     assert(exists, "Unable to find component % (%) in arch %", component, c_index, arch.signature);
 
-    comp_info := cast(*Type_Info)component; 
+    comp_info := reinterp(*Type_Info, component); 
     storage := arch.storage[c_index];
 
     assert(storage != null, "Unable to get component % from archetype %", component, arch.signature);
