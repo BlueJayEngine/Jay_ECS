@@ -4,6 +4,7 @@
 #import "Bit_Operations";
 #import "Compiler";
 #import "Jay_Utils";
+#if DEBUG  #import "Hash_Table";
 
 #load "world.jai";       // Everything lives here
 #load "archetype.jai";   // Everything stores here

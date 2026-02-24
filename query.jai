@@ -2,7 +2,7 @@ Query :: struct(components: ..Type) {
     entities: [][]Entity;
     _offsets: []s64;
 
-    #insert -> string {
+    #insert #run,stallable -> string {
         body_builder: String_Builder;
 
         for component, index: components {
@@ -10,7 +10,7 @@ Query :: struct(components: ..Type) {
         }
 
         return builder_to_string(*body_builder);
-    }
+    };
 
     count: s64;
 }

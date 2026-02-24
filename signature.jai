@@ -12,6 +12,16 @@ match :: (a: Signature, b: Signature) -> bool {
     };
 }
 
+overlaps :: (a: Signature, b: Signature) -> bool {
+    return #insert -> string {
+        comparsions: [..]string;
+        for index: 0..a.base.count-1 {
+            array_add(*comparsions, sprint("a.base[%] & b.base[%] != 0", index, index));
+        }
+        return join(join(..comparsions, " || "), ";");
+    };
+}
+
 equal :: inline (a: *Signature, b: *Signature) -> bool {
     return !memcmp(a, b, size_of(type_of(a)));
 }

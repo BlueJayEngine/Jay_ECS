@@ -1,22 +1,36 @@
 #add_context world_ptr: *void;
-#add_context compo: []Type;
 
+#add_context __jay_delta_time: float64;
+
+#if DEBUG {
+    #add_context __jay_system_timings: Table(string, float64);
+}
+
+delta_time :: () -> float64 {
+    return context.__jay_delta_time;
+}
+
+#if DEBUG {
+    system_timings :: inline () -> *Table(string, float64) {
+        return *context.__jay_system_timings;
+    }
+}
 
 // The World represents the game state.
-// It needs to know which systems you'll use.
-// Systems are just procedures wrapped in a System poly struct (see system.jai).
+// Systems are bare procedures passed via #code,typed block.
+// Ordering is controlled by @before:name / @after:name notes on the procedures.
 //
-// Basic example:  
+// Basic example:
 //
-//      world: World(systems = .[
-//          System(tick),   // e.g., tick :: (entity: Entity) { ... }
-//      ]);
+//      world: World(Code.[tick, render]);
 //
-// Systems can't be added/removed at runtime, so they all are conditional.
-// Also they just run one after another, no analysis or parallelisation.
-// This part of the ECS is still evolving, so it's a little messy.
+// Where tick and render are procedures defined with optional ordering notes:
+//      tick :: (entity: Entity) { ... }
+//      render :: (meshes: []Mesh) { ... } @after:tick
+//
+// Systems can't be added/removed at runtime.
 
-World :: struct (systems: [$SYS_COUNT]Type) {
+World :: struct ($systems: [$SYS_COUNT]Code) {
 
     entities: [..] Entity_State(component_registry);
     thumbstones: [..] u32;
@@ -27,13 +41,8 @@ World :: struct (systems: [$SYS_COUNT]Type) {
     component_registry :: #run -> []Type {
 
         result: [..]Type;
-        
-        for system_type: systems {
-            
-            params := (cast(*Type_Info_Struct)system_type).specified_parameters;
-
-            proc_type := params[1].type;
-
+        for system_code: systems {
+            proc_type := code_proc_type(system_code);
             collect_arg_types(proc_type, *result, .PRS_QUERIES);
         }
 
@@ -45,11 +54,10 @@ World :: struct (systems: [$SYS_COUNT]Type) {
     system_signs :: #run -> [SYS_COUNT]Signature(component_registry) {
         result: [SYS_COUNT]Signature(component_registry);
         
-        for system_type, index: systems {
-            
-            params := (cast(*Type_Info_Struct)system_type).specified_parameters;
-            proc_type := params[1].type;
+        for system_code, index: systems {
 
+            proc_type := code_proc_type(system_code);
+            
             types: [..]Type;
             collect_arg_types(proc_type, *types);
 
@@ -66,12 +74,39 @@ World :: struct (systems: [$SYS_COUNT]Type) {
         return result;
     }
 
-    _progress_impl :: (world: World, delta_time: float64, condition: u64) {
+    _progress_impl :: (world: World) {
         #insert -> string {
             builder: String_Builder;
 
-            for system_type, index: systems {
-                handle_system(system_type, index, component_registry, *builder);
+            // Collect proc info from each system Code block
+            entries: [SYS_COUNT]Proc_Info;
+            for system_code, i: systems {
+                _, notes := code_proc_type(system_code);
+                root := compiler_get_nodes(system_code);
+                ident := cast(*Code_Ident) root;
+                entries[i].name = copy_string(ident.name);
+
+                note_strings: [..] string;
+                for notes array_add(*note_strings, copy_string(it.text));
+                entries[i].notes = note_strings;
+            }
+
+            sorted := build_sorted_order(entries);
+
+            for sorted {
+                #if DEBUG {
+                    print_to_builder(*builder, "{\n");
+                    print_to_builder(*builder, "    __sys_start := current_time_monotonic();\n");
+                }
+
+                handle_system(systems[it], xx it, component_registry, *builder);
+
+                #if DEBUG {
+                    sys_name := entries[it].name;
+                    print_to_builder(*builder, "    __sys_elapsed := to_float64_seconds(current_time_monotonic() - __sys_start) * 1_000_000.0;\n");
+                    print_to_builder(*builder, "    table_set(*context.__jay_system_timings, \"%\", __sys_elapsed);\n", sys_name);
+                    print_to_builder(*builder, "}\n");
+                }
             }
 
             return builder_to_string(*builder);
@@ -79,36 +114,32 @@ World :: struct (systems: [$SYS_COUNT]Type) {
     }
 }
 
-// To keep your world spinning you need to call progress function. 
-// I was about to pass Apollo delta-time to it, but changed my mind and passed float64 seconds. Prove me wrong (for real, if you have better idea i want to hear it).
-// The condition is enum_flag value that represent current game condition. I wanted it exposed, so user can define cool custom game stages. As you can see it only accepts enum_flags
+code_proc_type :: (code: Code) -> *Type_Info_Procedure, []*Code_Note {
+    root := compiler_get_nodes(code);
+    assert(root != null, "Procedure root is not recognized");
+    assert(root.kind == .IDENT, "Procedure is not identifier");
+    ident := cast(*Code_Ident) root;
+    t_info := ident.type;
+    assert(t_info.type == .PROCEDURE, "The type is not procedure");
+    proc_type := cast(*Type_Info_Procedure)t_info;
 
-progress :: inline (world: *World, delta_time: Delta_Time, condition: $CT = 0) #modify {
-    ct_info := cast(*Type_Info)CT;
+    return proc_type, ident.resolved_declaration.notes;
+}
 
-    if ct_info.runtime_size != 8 then return false, "Condition must be 64bit enum flag";
+// To keep your world spinning you need to call progress function.
+// No more condition flags — ordering is handled by @before:/@after: notes.
 
-    if ct_info.type == {
-        case .INTEGER; {
-            return true;
-        }
-        case .ENUM; {
-            return (cast(*Type_Info_Enum)ct_info).enum_type_flags & Enum_Type_Flags.FLAGS == Enum_Type_Flags.FLAGS, "Condition must be 64bit enum flag";
-        }
-    }
-
-    return false, "Condition must be 64bit enum flag";
-} {
+progress :: inline (world: *World, delta_time: float64) {
 
     WT :: type_of(world);
- 
+
     procs :: Entity_Procs.{
         new_entity = (components: ..Any) -> Entity {
             return inline new_entity(cast(WT)context.world_ptr, components);
         },
         get = (entity: Entity, component: Type) -> *void {
             return inline get(cast(WT)context.world_ptr, entity, component);
-        }, 
+        },
         set = (entity: Entity, components: ..Any) {
             inline set(cast(WT)context.world_ptr, entity, components);
         },
@@ -123,7 +154,7 @@ progress :: inline (world: *World, delta_time: Delta_Time, condition: $CT = 0) #
         },
     };
 
-    WT._progress_impl(world, xx delta_time, xx condition,, ent_procs = procs, world_ptr = world, jay_delta_time = delta_time);
+    WT._progress_impl(world,, ent_procs = procs, world_ptr = world, __jay_delta_time = delta_time);
 }
 
 cleanup :: inline (world: *World, arch: *Archetype) {
