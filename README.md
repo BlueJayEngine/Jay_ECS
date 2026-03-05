@@ -1,172 +1,145 @@
+# Jay_ECS
 
-# Jay ECS 🐦
+`Jay_ECS` is a compile-time, archetype-based ECS for Jai.
 
-![License](https://img.shields.io/badge/lang-JAI-orange.svg) ![License](https://img.shields.io/badge/license-Apache_2.0-blue.svg) ![License](https://img.shields.io/badge/badges-included-green.svg)
+It is designed for the Jay engine, but can be used as a standalone module in any Jai project that wants predictable data layout and low-overhead system execution.
 
-A humble attempt to build an ergonomic ECS for Jai (The Language™) for healthy game development. 
+## What it actually is
 
-## Minimal example: 📦
+- Archetype ECS storage (`[]Entity` owners + tightly packed component arrays per archetype)
+- Compile-time system analysis (system arguments define required components)
+- Static world definition (`World(.[...systems...])`), no runtime system registration
+- Deterministic system order with `@before:<system>` and `@after:<system>` notes
+- Multiple processing styles: per-entity, query loops, and batched slices
+- Built-in per-tick `delta_time()` context value inside systems
+
+## Quick start
 
 ```jai
-
+#import "Basic";
 #import "Jay_ECS";
 
-#load "systems_example.jai" // begin_play(), hello_tick() and end_play() systems
+Position :: struct { x, y: float32; }
+Velocity :: struct { x, y: float32; }
 
-Game_Stage :: enum_flags { // simple game stages example
-    BEGIN;
-    TICK;
-    END;
+spawn :: () {
+    new_entity(Position.{0, 0}, Velocity.{1, 0});
+    new_entity(Position.{10, 5}, Velocity.{0, -1});
 }
 
-Hello_Info :: struct { // just a silly component
-    some_number: s32;
-    some_string: string;
-}
+move :: (entity: Entity, p: *Position, v: *Velocity) {
+    dt := xx delta_time();
+    p.x += v.x * dt;
+    p.y += v.y * dt;
+} @after:spawn
 
 main :: () {
-    world: World(systems = .[
-        System(begin_play, xx Game_Stage.BEGIN),  // yeh, systems should be known at compile time
-        System(hello_tick, xx Game_Stage.TICK),
-        System(end_play, xx Game_Stage.END)
-    ]);
+    world: World(.[spawn, move]);
 
-    progress(*world, 0, Game_Stage.BEGIN);
-
-    for 0..100 { // my cool game loop
-        progress(*world, 0.5, Game_Stage.TICK); // 0.5 is a lie! Calc delta time by yourself! 
+    for 0..59 {
+        progress(*world, 1.0 / 60.0);
     }
-
-    progress(*world, 0.5, Game_Stage.END);
 
     free(world);
 }
-
 ```
 
-### Systems example: ⚙️
+## System argument shapes
+
+The way you write system parameters controls how the system executes.
+
+### 1) Run once per `progress`
+
 ```jai
-#import "Basic";
-
-// Systems with no arguments fires once per "progress" call.
-
 begin_play :: () {
-    log("Begin Play");
-    entity1 := new_entity(Hello_Info.{xx to_seconds(current_time_consensus()), "My name is Eric"});
-    entity2 := new_entity(Hello_Info.{xx to_seconds(current_time_consensus()), "My name is Jumbo"});
-}
-
-// Systems with arguments fires for each matching entity 
-hello_tick :: (entity: Entity, hello: Hello_Info) {
-    log("Hello Tick: % - %", hello, delta_time());
-}
-
-// Passing components by value and by pointer are the same right now, but in the future this will be important
-hello_tick1 :: (entity: Entity, hello: *Hello_Info) {
-    log("Hello Tick: % - %", hello, delta_time());
-}
-
-end_play :: () {
-    log("End Play");
+    // Called once each progress() tick
 }
 ```
 
-- **Random access**
-You can get pointer to the component of the entity by using get(Entity, Type). What you need to know: the random access is slow. ~10x slower than everything else. Use it only if you have entity-to-entity connection.
+### 2) Per-entity matching
+
 ```jai
-c1 := get(it, Component1);
+integrate :: (entity: Entity, p: *Position, v: *Velocity) {
+    // Called for each entity that has Position + Velocity
+}
 ```
 
-### Query systems: 🔍
-The ECS supports multiple query shapes so systems can pick the access pattern they need.
+### 3) Query view
 
-- **Per-entity query loop** — pull grouped components directly:
 ```jai
-test_each :: inline (query: Query(Component1, Component2, Component3, Component4)) {
+tick_query :: (query: Query(Position, Velocity)) {
     for query {
-        c1, c2, c3, c4 := components();
-        c1.val1 += 1;
-        c2.vala1 += 1;
-        c3.valb1 += 1;
-        c4.valc2.index += 1; // Component4 holds an Entity
+        p, v := components();
+        p.x += v.x;
     }
 }
 ```
 
-- **Iterator access** — iterate each component stream separately:
-```jai
-test_iter :: inline (query: Query(Component1, Component2, Component3, Component4)) {
-    iter1 := get_iter(query, Component1);
-    iter2 := get_iter(query, Component2);
-    iter3 := get_iter(query, Component3);
-    iter4 := get_iter(query, Component4);
+You can also use iterators:
 
-    for *c1, index: iter1 {
-        c1.val1 += 1;
-    }
-    for *c2, index: iter2 {
-        c2.vala1 += 1;
-    }
-    for *c3, index: iter3 {
-        c3.valb1 += 1;
-    }
-    for *c4, index: iter4 {
-        c4.valc2.index += 1;
+```jai
+tick_iter :: (query: Query(Position, Velocity)) {
+    pos := get_iter(query, Position);
+    for *p: pos {
+        p.x += 1;
     }
 }
 ```
 
-- **Batched arrays** — process slices of components (and entities) at once:
+### 4) Batched slices
+
 ```jai
-test_bach :: inline (e: []Entity, c1: []Component1, c2: []Component2, c3: []Component3, c4: []Component4) {
-    for 0..3 { // batch size defined on the system signature
-        c1[it].val1 += 1;
-        c2[it].vala1 += 1;
-        c3[it].valb1 += 1;
-        c4[it].valc2.index += 1;
+tick_batch :: (e: []Entity, p: []Position, v: []Velocity) {
+    for 0..e.count-1 {
+        p[it].x += v[it].x;
+        p[it].y += v[it].y;
     }
-}
+} @batch_size:64
 ```
 
-Systems can also take `entity: Entity` alongside components when they need the owning entity in addition to component data.
+Batch mode is useful when you want explicit chunked processing.
 
+## System notes
 
-### Entity manipulation: 🔬
+- `@before:<system_name>`: run this system before another system
+- `@after:<system_name>`: run this system after another system
+- `@without:<ComponentName>`: include matching entities, but exclude archetypes containing that component
+- `@batch_size:<N>`: set batch size for slice-based systems (default is `4`)
+
+## Entity operations
+
+Inside systems, world-free overloads use ECS context:
+
 ```jai
-
-// Create new entity:
-my_entity := new_entity(Component1.{}, Component2); 
-
-// A type cannot be a component, so-any values of type “Type” will be treated as default values of that type ( Component2 and Component2.{} are equal 🤪) 
-
-// Add or replace component:
-set(my_entity, Component2.{"new_value"});
-
-// Remove component from entity:
-erase(my_entity, Component2);
-
-// Print entity to logs:
-dump(my_entity);
-
-// Destroy entire entity:
-destroy(my_entity);
-
+e := new_entity(Position.{}, Velocity.{});
+set(e, Velocity.{2, 0});
+erase(e, Velocity);
+destroy(e);
 ```
 
-All functions above get the world from context, so if you need to call them from outside - pass the world before entity:
+Outside systems, use explicit world overloads:
+
 ```jai
-my_entity := new_entity(world, .[Component1.{}, Component2]);
-set(world, my_entity, .[Component2.{"new_value"}]);
-erase(world, my_entity, .[Component2]);
-dump(world, my_entity);
-destroy(world, my_entity);
+e := new_entity(world, .[Position.{}, Velocity.{}]);
+set(world, e, .[Velocity.{2, 0}]);
+erase(world, e, .[Velocity]);
+destroy(world, e);
 ```
 
-**NOTE:** The expectation was that the `set()` function would be used to mutate entities. If you need to efficiently update the value of a component - get it via a system argument and update it in place.
+`get(entity, ComponentType)` is available, but direct component access through system parameters is the intended fast path.
 
-### TODO: ⌛
+## Important constraints
 
- - Optional components support
- - Entity relationships (flecs-like)
- - Auto-Parallelization
- - Advanced system management (ordering, bundling and other) 
+- Systems are fixed at compile time when you create `World`
+- Component registry is inferred from system argument types (and query component lists)
+- If you use a component type that never appears in any system signature, ECS logs an error for that type
+- Systems cannot mix batched (`[]Component`) and non-batched (`Component` / `*Component`) component arguments in the same signature
+
+## Debug/testing notes
+
+- Build with `#import "Jay_ECS"(DEBUG = true);` to enable per-system timing capture (`system_timings()`)
+- See `test/` for concrete coverage of:
+  - per-entity systems
+  - query loops + iterators
+  - batched tail handling
+  - `@without` filtering
