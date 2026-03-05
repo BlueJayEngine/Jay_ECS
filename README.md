@@ -22,9 +22,15 @@ It is designed for the Jay engine, but can be used as a standalone module in any
 Position :: struct { x, y: float32; }
 Velocity :: struct { x, y: float32; }
 
+spawned: bool = false;
+
 spawn :: () {
+    if spawned return; // TODO: add system groups to avoid condition management
+    
     new_entity(Position.{0, 0}, Velocity.{1, 0});
     new_entity(Position.{10, 5}, Velocity.{0, -1});
+
+    spawned = true;
 }
 
 move :: (entity: Entity, p: *Position, v: *Velocity) {
