@@ -34,7 +34,7 @@ spawn :: () {
 }
 
 move :: (entity: Entity, p: *Position, v: *Velocity) {
-    dt := xx delta_time();
+    dt := delta_time();
     p.x += v.x * dt;
     p.y += v.y * dt;
 } @after:spawn
